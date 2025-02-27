@@ -251,12 +251,15 @@ rule run_medaka:
     input:
         reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
         consensus=DATA+"/autocycler/consensus_assembly.fasta"
-    output: DATA+"/medaka/polished.fasta"
-    threads: 9999
-    conda: "envs/medaka.yaml"
+    output: DATA+"/medaka/consensus.fasta"
+    params:
+        medaka_args="-b 10"
+    threads: 16
+    conda: "envs/medaka-gpu.yaml"
     shell:
         """
         medaka_consensus \
+            {params.medaka_args} \
             -i {input.reads} \
             -d {input.consensus} \
             -o $(dirname {output}) \
@@ -269,6 +272,6 @@ rule run_medaka:
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/medaka/polished.fasta"
+    input: DATA+"/medaka/consensus.fasta"
     default_target: True
 
