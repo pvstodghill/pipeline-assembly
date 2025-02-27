@@ -24,6 +24,12 @@ You will want to install the following:
 
 **Create the configuration files**
 
+For the `example` data,
+
+1. `( cd example ; bash download.bash )`
+
+1. Copy `example/config.yaml` to  `config.yaml`.
+
 To run the pipeline on your own data,
 
 1. Copy `config.template.yaml` to `config.yaml`.  Edit `config.yaml`
