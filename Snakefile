@@ -67,8 +67,8 @@ rule download_raven_script:
 # ------------------------------------------------------------------------
 
 rule make_inputs_long_fq:
-    input: get_config("nanopore")
-    output: DATA+"/inputs/long.fq.gz"
+    input: os.path.expanduser(get_config("nanopore"))
+    output: DATA+"/inputs/raw_nanopore.fastq.gz"
     shell:
         """
         cat {input} > {output}
@@ -89,7 +89,7 @@ if get_config('genome_size') != None:
 else:
     
     rule compute_genome_size:
-        input: DATA+"/inputs/long.fq.gz"
+        input: DATA+"/inputs/raw_nanopore.fastq.gz"
         output: DATA+"/genome_size.txt"
         conda: "envs/lrge.yaml"
         threads: 9999
@@ -104,11 +104,10 @@ else:
 rule make_subsamples:
     input:
         autocycler=BIN+"/autocycler",
-        long_fq=DATA+"/inputs/long.fq.gz",
+        long_fq=DATA+"/inputs/raw_nanopore.fastq.gz",
         gs=DATA+"/genome_size.txt"
     output: SUBSAMPLES_FQ
     params:
-        genome_size = get_config("genome_size", "5m"),
         subsamples = NUM_SUBSAMPLES
     shell:
         """
