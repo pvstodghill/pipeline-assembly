@@ -13,6 +13,8 @@ FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main
 MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
 RAVEN_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/raven.sh'
 
+GZIP="pigz"
+
 def get_config(name, default=None):
     return config[name] if name in config else default
 
@@ -193,7 +195,7 @@ checkpoint run_autocycler_cluster:
         """
 
 def list_of_clusters(wildcards):
-    ckp = checkpoints.run_cluster.get(**wildcards).output[0]
+    ckp = checkpoints.run_autocycler_cluster.get(**wildcards).output[0]
     clusters = glob.glob(DATA+"/autocycler/clustering/qc_pass/cluster_*")
     return list(clusters)
 
