@@ -30,6 +30,8 @@ ASSEMBLIES_FA = \
            name=ASSEMBLERS, i=SUBSAMPLES_IS)
 
 # ------------------------------------------------------------------------
+# download autocycler and auxiliary scripts
+# ------------------------------------------------------------------------
 
 rule download_autocycler:
     output: BIN+"/autocycler"
@@ -65,6 +67,8 @@ rule download_raven_script:
         """
 
 # ------------------------------------------------------------------------
+# collect the inputs
+# ------------------------------------------------------------------------
 
 rule make_inputs_long_fq:
     input: os.path.expanduser(get_config("nanopore"))
@@ -74,6 +78,8 @@ rule make_inputs_long_fq:
         cat {input} > {output}
         """
 
+# ------------------------------------------------------------------------
+# estimate the genome size
 # ------------------------------------------------------------------------
 
 if get_config('genome_size') != None:
@@ -100,6 +106,8 @@ else:
             
 
 # ------------------------------------------------------------------------
+# autocycler subsample
+# ------------------------------------------------------------------------
 
 rule make_subsamples:
     input:
@@ -119,6 +127,8 @@ rule make_subsamples:
         """
 
 # ------------------------------------------------------------------------
+# Run assembler {name} on subsample {i}
+# ------------------------------------------------------------------------
 
 rule make_one_assembly:
     input:
@@ -137,8 +147,10 @@ rule make_one_assembly:
         """
 
 # ------------------------------------------------------------------------
+# autocycler compress
+# ------------------------------------------------------------------------
 
-rule run_compress:
+rule run_autocycler_compress:
     input: 
         autocycler=BIN+"/autocycler",
         assemblies=ASSEMBLIES_FA
@@ -151,8 +163,10 @@ rule run_compress:
         """
 
 # ------------------------------------------------------------------------
+# autocycler cluster
+# ------------------------------------------------------------------------
 
-checkpoint run_cluster:
+checkpoint run_autocycler_cluster:
     input: 
         autocycler=BIN+"/autocycler",
         compresses_assemblies=DATA+"/autocycler/input_assemblies.gfa"
@@ -169,6 +183,8 @@ def list_of_clusters(wildcards):
     return list(clusters)
 
 # ------------------------------------------------------------------------
+# autocycler trim
+# -----------------------------------------------------------------------
 
 rule run_autocycler_trim:
     input:
@@ -180,6 +196,10 @@ rule run_autocycler_trim:
         {input.autocycler} trim --cluster_dir $(dirname {input.untrimmed})
         """
 
+# ------------------------------------------------------------------------
+# autocycler resolve
+# -----------------------------------------------------------------------
+
 rule run_autocycler_resolve:
     input:
         autocycler=BIN+"/autocycler",
@@ -190,6 +210,8 @@ rule run_autocycler_resolve:
         {input.autocycler} resolve --cluster_dir $(dirname {input.trimmed})
         """
 
+# ------------------------------------------------------------------------
+# autocycler combine
 # ------------------------------------------------------------------------
 
 rule run_autocycler_combine:
@@ -204,6 +226,8 @@ rule run_autocycler_combine:
             --in_gfas {input.gfas}
         """
 
+# ------------------------------------------------------------------------
+# Entry point
 # ------------------------------------------------------------------------
 
 rule all:
