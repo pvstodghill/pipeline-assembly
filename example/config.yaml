@@ -2,15 +2,19 @@
 # Basic parameters
 ########################################################################
 
-# Where to put output files
-data: data
+# # Where to put output files
+# data: data
+
+strain: example
+version: 
+
 
 ########################################################################
 # Inputs data
 ########################################################################
 
 # raw, unpolished long reads
-long_reads: example/reads.fastq.gz
+nanopore: example/reads.fastq.gz
 
 # the expected size of the genome. if unset, will be computed
 # automatically.

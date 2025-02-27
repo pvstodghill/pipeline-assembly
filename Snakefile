@@ -67,7 +67,7 @@ rule download_raven_script:
 # ------------------------------------------------------------------------
 
 rule make_inputs_long_fq:
-    input: get_config("long_reads")
+    input: get_config("nanopore")
     output: DATA+"/inputs/long.fq.gz"
     shell:
         """
