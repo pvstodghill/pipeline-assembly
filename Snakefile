@@ -244,10 +244,31 @@ rule run_autocycler_combine:
         """
 
 # ------------------------------------------------------------------------
+# medaka
+# ------------------------------------------------------------------------
+
+rule run_medaka:
+    input:
+        reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        consensus=DATA+"/autocycler/consensus_assembly.fasta"
+    output: DATA+"/medaka/polished.fasta"
+    threads: 9999
+    conda: "envs/medaka.yaml"
+    shell:
+        """
+        medaka_consensus \
+            -i {input.reads} \
+            -d {input.consensus} \
+            -o $(dirname {output}) \
+            -t {threads} \
+            --bacteria
+        """
+
+# ------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/autocycler/consensus_assembly.fasta"
+    input: DATA+"/medaka/polished.fasta"
     default_target: True
 
