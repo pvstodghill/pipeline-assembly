@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - any2fasta
+  - miniasm
+  - minimap2
+  - minipolish
+  - racon

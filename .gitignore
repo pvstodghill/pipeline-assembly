@@ -1,2 +1,6 @@
 /.snakemake/
 /data/
+/config.yaml
+/example/autocycler-demo-dataset.tar
+/example/reads.fastq.gz
+/example/truth.fasta

@@ -1,0 +1,25 @@
+########################################################################
+# Basic parameters
+########################################################################
+
+# Where to put output files
+data: data
+
+########################################################################
+# Inputs data
+########################################################################
+
+# raw, unpolished long reads
+long_reads: example/reads.fastq.gz
+
+# the expected size of the genome. if unset, will be computed
+# automatically.
+## genome_size: 242000
+
+########################################################################
+# Pipeline parameters
+########################################################################
+
+# Number of subsamples to generate of the entire long read set. If not
+# set, defaults to "4".
+## subsamples: 4
