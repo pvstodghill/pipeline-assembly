@@ -104,6 +104,21 @@ else:
             lrge -qqq --threads {threads} {input} > {output}
             """
             
+# ------------------------------------------------------------------------
+# run filtlong
+# ------------------------------------------------------------------------
+
+
+rule run_filtlong:
+    input: DATA+"/inputs/raw_nanopore.fastq.gz",
+    output: DATA+"/filtlong/filtered_nanopore.fastq.gz",
+    threads: 9999
+    conda: "envs/filtlong.yaml"
+    shell:
+        """
+        filtlong --min_length 1000 --keep_percent 95 {input} \
+            | {GZIP} > {output}
+        """
 
 # ------------------------------------------------------------------------
 # autocycler subsample
@@ -112,7 +127,7 @@ else:
 rule make_subsamples:
     input:
         autocycler=BIN+"/autocycler",
-        long_fq=DATA+"/inputs/raw_nanopore.fastq.gz",
+        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
         gs=DATA+"/genome_size.txt"
     output: SUBSAMPLES_FQ
     params:
