@@ -475,7 +475,7 @@ rule run_git:
         DATA+"/versions/referenceseeker.txt",
         DATA+"/pypolca/pypolca_corrected.fasta",
         (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
-    output: DATA+"/git.log"
+    output: DATA+"/git-autocycler.log"
     shell:
         """
 	(
@@ -492,6 +492,6 @@ rule run_git:
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/git.log"
+    input: DATA+"/git-autocycler.log"
     default_target: True
 
