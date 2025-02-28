@@ -72,13 +72,20 @@ rule download_raven_script:
 # collect the inputs
 # ------------------------------------------------------------------------
 
-rule make_inputs_long_fq:
-    input: os.path.expanduser(get_config("nanopore"))
+rule make_raw_nanopore:
+    input: os.path.expanduser(config['nanopore'])
     output: DATA+"/inputs/raw_nanopore.fastq.gz"
-    shell:
-        """
-        cat {input} > {output}
-        """
+    shell: "cat {input} > {output}"
+
+rule make_raw_short_R1:
+    input: os.path.expanduser(config['short_R1'])
+    output: DATA+"/inputs/raw_short_R1.fastq.gz"
+    shell: "cat {input} > {output}"
+
+rule make_raw_short_R2:
+    input: os.path.expanduser(config['short_R2'])
+    output: DATA+"/inputs/raw_short_R2.fastq.gz"
+    shell: "cat {input} > {output}"
 
 # ------------------------------------------------------------------------
 # estimate the genome size
@@ -268,10 +275,88 @@ rule run_medaka:
         """
 
 # ------------------------------------------------------------------------
+# fastp
+# ------------------------------------------------------------------------
+
+rule run_fastp:
+    input:
+        r1=DATA+"/inputs/raw_short_R1.fastq.gz",
+        r2=DATA+"/inputs/raw_short_R2.fastq.gz"
+    output:
+        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+        u=DATA+"/fastp/u.fastq.gz",
+        json=DATA+"/fastp/fastp.json",
+        html=DATA+"/fastp/fastp.html",
+    threads: 9999
+    conda: "envs/fastp.yaml"
+    shell:
+        """
+        fastp \
+            --thread {threads} \
+            --json {output.json} --html {output.html} \
+            --in1 {input.r1} --in2 {input.r2}  \
+            --out1 {output.r1} --out2 {output.r2} \
+            --unpaired1 {output.u} --unpaired2 {output.u}
+        """
+
+# ------------------------------------------------------------------------
+# polypolish
+# ------------------------------------------------------------------------
+
+rule run_polypolish:
+    input:
+        draft=DATA+"/medaka/consensus.fasta",
+        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+    output: DATA+"/polypolish/polished.fasta"
+    threads: 9999
+    conda: "envs/polypolish.yaml"
+    shell:
+        """
+        dir=$(dirname {output})
+        cp {input.draft} $dir/draft.fasta
+        cp {input.r1} $dir/r1.fastq.gz
+        cp {input.r2} $dir/r2.fastq.gz
+        coverage=$({PIPELINE}/scripts/fastq-coverage -p 0 -g $dir/draft.fasta $dir/r1.fastq.gz $dir/r2.fastq.gz)
+        cd $dir
+        bwa index draft.fasta
+        bwa mem -t {threads} -a draft.fasta r1.fastq.gz > align1.sam
+        bwa mem -t {threads} -a draft.fasta r2.fastq.gz > align2.sam
+        polypolish filter \
+            --in1 align1.sam --in2 align2.sam \
+            --out1 filtered1.sam --out2 filtered2.sam
+        if [ $coverage -le 25 ] ; then
+            CAREFUL=--careful
+        else
+            CAREFUL=
+        fi
+        polypolish polish $CAREFUL draft.fasta filtered1.sam filtered2.sam > polished.fasta
+        """
+
+# ------------------------------------------------------------------------
+# pypolca
+# ------------------------------------------------------------------------
+
+rule run_pypolca:
+    input:
+        draft=DATA+"/polypolish/polished.fasta",
+        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+    output: DATA+"/pypolca/pypolca_corrected.fasta"
+    threads: 16 # weird samtools memory problem
+    conda: "envs/pypolca.yaml"
+    shell:
+        """
+        pypolca run --force -a {input.draft} -1 {input.r1} -2 {input.r2} \
+            -t {threads} -o $(dirname {output}) --careful
+        """
+
+# ------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/medaka/consensus.fasta"
+    input: DATA+"/pypolca/pypolca_corrected.fasta"
     default_target: True
 
