@@ -353,10 +353,30 @@ rule run_pypolca:
         """
 
 # ------------------------------------------------------------------------
+# Run ReferenceSeeker
+# ------------------------------------------------------------------------
+
+if get_config('refseek_dir') != None:
+    rule run_referenceseeker:
+        input: DATA+"/pypolca/pypolca_corrected.fasta"
+        output: DATA+"/referenceseeker.log"
+        params:
+            refseek_dir=os.path.expanduser(get_config('refseek_dir'))
+        conda: "envs/referenceseeker.yaml"
+        shell:
+            """
+            REFSEEK={params.refseek_dir} \
+            {PIPELINE}/scripts/run-referenceseeker -r {input} \
+                | tee {output}
+            """
+
+# ------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/pypolca/pypolca_corrected.fasta"
+    input:
+        DATA+"/pypolca/pypolca_corrected.fasta",
+        (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
     default_target: True
 
