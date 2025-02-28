@@ -112,6 +112,13 @@ else:
             """
             lrge -qqq --threads {threads} {input} > {output}
             """
+    rule lrge_version:
+        output: DATA+"/versions/lrge.txt"
+        conda: "envs/lrge.yaml"
+        shell:
+            """
+            lrge --version 2>&1 | tee {output}
+            """
             
 # ------------------------------------------------------------------------
 # run filtlong
@@ -127,6 +134,14 @@ rule run_filtlong:
         """
         filtlong --min_length 1000 --keep_percent 95 {input} \
             | {GZIP} > {output}
+        """
+
+rule filtlong_version:
+    output: DATA+"/versions/filtlong.txt"
+    conda: "envs/filtlong.yaml"
+    shell:
+        """
+        filtlong --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -150,6 +165,14 @@ rule make_subsamples:
         		  --count "{params.subsamples}"
         """
 
+rule autocycler_version:
+    input:
+        autocycler=BIN+"/autocycler",
+    output: DATA+"/versions/autocycler.txt"
+    shell:
+        """
+        {input.autocycler} --version 2>&1 | tee {output}
+        """
 # ------------------------------------------------------------------------
 # Run assembler {name} on subsample {i}
 # ------------------------------------------------------------------------
@@ -168,6 +191,30 @@ rule make_one_assembly:
             {input.fq} \
             $(dirname {output})/$(basename {output} .fasta) \
             {threads} $(cat {input.gs})
+        """
+
+rule flye_version:
+    output: DATA+"/versions/flye.txt"
+    conda: "envs/flye.yaml"
+    shell:
+        """
+        flye --version 2>&1 | tee {output}
+        """
+
+rule miniasm_version:
+    output: DATA+"/versions/miniasm.txt"
+    conda: "envs/miniasm.yaml"
+    shell:
+        """
+        miniasm -V 2>&1 | tee {output}
+        """
+
+rule raven_version:
+    output: DATA+"/versions/raven.txt"
+    conda: "envs/raven.yaml"
+    shell:
+        """
+        raven --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -274,6 +321,13 @@ rule run_medaka:
             --bacteria
         """
 
+rule medaka_version:
+    output: DATA+"/versions/medaka.txt"
+    conda: "envs/medaka-gpu.yaml"
+    shell:
+        """
+        medaka --version 2>&1 | tee {output}
+        """
 # ------------------------------------------------------------------------
 # fastp
 # ------------------------------------------------------------------------
@@ -298,6 +352,14 @@ rule run_fastp:
             --in1 {input.r1} --in2 {input.r2}  \
             --out1 {output.r1} --out2 {output.r2} \
             --unpaired1 {output.u} --unpaired2 {output.u}
+        """
+
+rule fastp_version:
+    output: DATA+"/versions/fastp.txt"
+    conda: "envs/fastp.yaml"
+    shell:
+        """
+        fastp --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -334,6 +396,14 @@ rule run_polypolish:
         polypolish polish $CAREFUL draft.fasta filtered1.sam filtered2.sam > polished.fasta
         """
 
+rule polypolish_version:
+    output: DATA+"/versions/polypolish.txt"
+    conda: "envs/polypolish.yaml"
+    shell:
+        """
+        polypolish --version 2>&1 | tee {output}
+        """
+
 # ------------------------------------------------------------------------
 # pypolca
 # ------------------------------------------------------------------------
@@ -350,6 +420,14 @@ rule run_pypolca:
         """
         pypolca run --force -a {input.draft} -1 {input.r1} -2 {input.r2} \
             -t {threads} -o $(dirname {output}) --careful
+        """
+
+rule pypolca_version:
+    output: DATA+"/versions/pypolca.txt"
+    conda: "envs/pypolca.yaml"
+    shell:
+        """
+        pypolca --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -370,13 +448,50 @@ if get_config('refseek_dir') != None:
                 | tee {output}
             """
 
+rule referenceseeker_version:
+    output: DATA+"/versions/referenceseeker.txt"
+    conda: "envs/referenceseeker.yaml"
+    shell:
+        """
+        referenceseeker --version 2>&1 | tee {output}
+        """
+
+# ------------------------------------------------------------------------
+# Check Git status
+# ------------------------------------------------------------------------
+
+rule run_git:
+    input:
+        DATA+"/versions/autocycler.txt",
+        DATA+"/versions/fastp.txt",
+        DATA+"/versions/filtlong.txt",
+        DATA+"/versions/flye.txt",
+        DATA+"/versions/lrge.txt",
+        DATA+"/versions/medaka.txt",
+        DATA+"/versions/miniasm.txt",
+        DATA+"/versions/polypolish.txt",
+        DATA+"/versions/pypolca.txt",
+        DATA+"/versions/raven.txt",
+        DATA+"/versions/referenceseeker.txt",
+        DATA+"/pypolca/pypolca_corrected.fasta",
+        (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
+    output: DATA+"/git.log"
+    shell:
+        """
+	(
+	    cd {PIPELINE}
+	    echo
+	    ( set -x ; git status )
+	    echo
+	    ( set -x ; git log -n1 )
+	) 2>&1 | tee {output}
+        """ 
+
 # ------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------
 
 rule all:
-    input:
-        DATA+"/pypolca/pypolca_corrected.fasta",
-        (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
+    input: DATA+"/git.log"
     default_target: True
 
