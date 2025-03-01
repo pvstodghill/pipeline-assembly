@@ -23,3 +23,9 @@ nanopore: .../long.fq.gz
 # Number of subsamples to generate of the entire long read set. If not
 # set, defaults to "4".
 ## subsamples: 4
+
+########################################################################
+# Paths to Referenceseeker, PGAP, etc.
+########################################################################
+
+refseek_dir: ~/scratch/referenceseeker
