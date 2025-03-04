@@ -434,8 +434,6 @@ rule pypolca_version:
 # Run ReferenceSeeker
 # ------------------------------------------------------------------------
 
-REFSEEK_CUTOFF = float(get_config('refseek_cutoff','0.95'))
-
 if get_config('refseek_dir') != None:
     rule run_referenceseeker:
         input: DATA+"/pypolca/pypolca_corrected.fasta"
@@ -443,13 +441,12 @@ if get_config('refseek_dir') != None:
         params:
             refseek_dir=os.path.expanduser(get_config('refseek_dir')),
             refseek_cutoff="-u" if REFSEEK_CUTOFF == 0.0 else "-a "+str(REFSEEK_CUTOFF),
-            refseek_dbs=get_config('refseek_dbs','-r')
+            refseek_args=get_config('refseek_args','-a 0.95 -r')
         conda: "envs/referenceseeker.yaml"
         shell:
             """
             REFSEEK={params.refseek_dir} \
-            {PIPELINE}/scripts/run-referenceseeker {params.refseek_cutoff} \
-            		{params.refseek_dbs} {input} \
+            {PIPELINE}/scripts/run-referenceseeker {params.refseek_args} {input} \
                 | tee {output}
             """
 
