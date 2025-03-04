@@ -25,7 +25,9 @@ nanopore: .../long.fq.gz
 ## subsamples: 4
 
 ########################################################################
-# Paths to Referenceseeker, PGAP, etc.
+# Referenceseeker: path and params
 ########################################################################
 
 refseek_dir: ~/scratch/referenceseeker
+#refseek_cutoff: 0.95
+#refseek_dbs: -r
