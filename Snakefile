@@ -488,10 +488,36 @@ rule run_git:
         """ 
 
 # ------------------------------------------------------------------------
+# Generate the summary
+# ------------------------------------------------------------------------
+
+rule make_summary:
+    input:
+        autocycler_assembly=DATA+"/autocycler/consensus_assembly.fasta",
+        dnadiff_report=DATA+"/dnadiff/out.report",
+        referenceseeker_log=DATA+"/referenceseeker.log"
+    output: DATA+"/summary-autocycler.log"
+    shell:
+        """
+        (
+            echo
+            echo === autocycler summary ===
+            fgrep '>' {input.autocycler_assembly}
+            echo 
+            echo === autocycler vs. unicycler ===
+            head -n8 {input.dnadiff_report}  | tail -n+4
+            echo 
+            echo === referenceseeker results ===
+            cat {input.referenceseeker_log}
+        ) | tee {output}
+        """
+                
+
+# ------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/git-autocycler.log"
+    input: DATA+"/summary-autocycler.log"
     default_target: True
 
