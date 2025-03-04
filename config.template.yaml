@@ -12,6 +12,10 @@
 # raw, unpolished long reads
 nanopore: .../long.fq.gz
 
+# # raw, unpolished Illumina reads
+# short_R1: .../short_R1.fastq.gz
+# short_R2: .../short_R2.fastq.gz
+
 # the expected size of the genome. if unset, will be computed
 # automatically.
 ## genome_size: 5m
@@ -29,5 +33,4 @@ nanopore: .../long.fq.gz
 ########################################################################
 
 refseek_dir: ~/scratch/referenceseeker
-#refseek_cutoff: 0.95
-#refseek_dbs: -r
+#refseek_args: -a 0.95 -r
