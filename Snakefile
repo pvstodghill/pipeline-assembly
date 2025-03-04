@@ -495,8 +495,7 @@ rule run_git:
 rule make_summary:
     input:
         autocycler_assembly=DATA+"/autocycler/consensus_assembly.fasta",
-        dnadiff_report=DATA+"/dnadiff/out.report",
-        referenceseeker_log=DATA+"/referenceseeker.log"
+        referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
     output: DATA+"/summary-autocycler.log"
     shell:
         """
@@ -504,12 +503,11 @@ rule make_summary:
             echo
             echo === autocycler summary ===
             fgrep '>' {input.autocycler_assembly}
-            echo 
-            echo === autocycler vs. unicycler ===
-            head -n13 {input.dnadiff_report}  | tail -n+4
-            echo 
-            echo === referenceseeker results ===
-            fgrep -A10 '#ID' {input.referenceseeker_log}
+            if [ -e {input.referenceseeker_log} ] ; then
+                echo 
+                echo === referenceseeker results ===
+                fgrep -A10 '#ID' {input.referenceseeker_log}
+            fi
         ) | tee {output}
         """
                 
@@ -519,6 +517,8 @@ rule make_summary:
 # ------------------------------------------------------------------------
 
 rule all:
-    input: DATA+"/summary-autocycler.log"
+    input:
+        DATA+"/summary-autocycler.log",
+        DATA+"/git-autocycler.log"
     default_target: True
 
