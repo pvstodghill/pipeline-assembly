@@ -506,10 +506,10 @@ rule make_summary:
             fgrep '>' {input.autocycler_assembly}
             echo 
             echo === autocycler vs. unicycler ===
-            head -n8 {input.dnadiff_report}  | tail -n+4
+            head -n13 {input.dnadiff_report}  | tail -n+4
             echo 
             echo === referenceseeker results ===
-            cat {input.referenceseeker_log}
+            fgrep -A10 '#ID' {input.referenceseeker_log}
         ) | tee {output}
         """
                 
