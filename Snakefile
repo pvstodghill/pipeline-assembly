@@ -35,15 +35,6 @@ ASSEMBLIES_FA = \
 # download autocycler and auxiliary scripts
 # ------------------------------------------------------------------------
 
-rule download_autocycler:
-    output: BIN+"/autocycler"
-    shell:
-        """
-        cd $(dirname {output})
-        wget -q {AUTOCYCLER_URL}
-        tar xf autocycler*.tar.gz
-        """
-
 rule download_flye_script:
     output: BIN+"/flye.sh"
     shell:
@@ -150,15 +141,15 @@ rule filtlong_version:
 
 rule make_subsamples:
     input:
-        autocycler=BIN+"/autocycler",
         long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
         gs=DATA+"/genome_size.txt"
     output: SUBSAMPLES_FQ
     params:
         subsamples = NUM_SUBSAMPLES
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} subsample \
+        autocycler subsample \
         		  --reads {input.long_fq} \
 			  --out_dir $(dirname {output[0]}) \
         		  --genome_size $(cat {input.gs}) \
@@ -166,12 +157,11 @@ rule make_subsamples:
         """
 
 rule autocycler_version:
-    input:
-        autocycler=BIN+"/autocycler",
     output: DATA+"/versions/autocycler.txt"
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} --version 2>&1 | tee {output}
+        autocycler --version 2>&1 | tee {output}
         """
 # ------------------------------------------------------------------------
 # Run assembler {name} on subsample {i}
@@ -223,12 +213,12 @@ rule raven_version:
 
 rule run_autocycler_compress:
     input: 
-        autocycler=BIN+"/autocycler",
         assemblies=ASSEMBLIES_FA
     output: DATA+"/autocycler/input_assemblies.gfa"
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} compress \
+        autocycler compress \
             --assemblies_dir $(dirname {input.assemblies[0]}) \
             --autocycler_dir $(dirname {output})
         """
@@ -239,12 +229,12 @@ rule run_autocycler_compress:
 
 checkpoint run_autocycler_cluster:
     input: 
-        autocycler=BIN+"/autocycler",
         compresses_assemblies=DATA+"/autocycler/input_assemblies.gfa"
     output: directory(DATA+"/autocycler/clustering")
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} cluster \
+        autocycler cluster \
             --autocycler_dir $(dirname {input.compresses_assemblies})
         """
 
@@ -259,12 +249,12 @@ def list_of_clusters(wildcards):
 
 rule run_autocycler_trim:
     input:
-        autocycler=BIN+"/autocycler",
         untrimmed="{cluster}/1_untrimmed.gfa"
     output: "{cluster}/2_trimmed.gfa"
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} trim --cluster_dir $(dirname {input.untrimmed})
+        autocycler trim --cluster_dir $(dirname {input.untrimmed})
         """
 
 # ------------------------------------------------------------------------
@@ -273,12 +263,12 @@ rule run_autocycler_trim:
 
 rule run_autocycler_resolve:
     input:
-        autocycler=BIN+"/autocycler",
         trimmed="{cluster}/2_trimmed.gfa"
     output: "{cluster}/5_final.gfa"
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} resolve --cluster_dir $(dirname {input.trimmed})
+        autocycler resolve --cluster_dir $(dirname {input.trimmed})
         """
 
 # ------------------------------------------------------------------------
@@ -287,12 +277,12 @@ rule run_autocycler_resolve:
 
 rule run_autocycler_combine:
     input:
-        autocycler=BIN+"/autocycler",
         gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
     output: DATA+"/autocycler/consensus_assembly.fasta"
+    conda: "envs/autocycler.yaml"
     shell:
         """
-        {input.autocycler} combine \
+        autocycler combine \
             --autocycler_dir $(dirname {output}) \
             --in_gfas {input.gfas}
         """
