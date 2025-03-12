@@ -7,8 +7,6 @@ DATA=config['data'] if 'data' in config else "data"
 BIN=DATA+"/bin"
 PIPELINE=os.path.dirname(workflow.snakefile)
 
-AUTOCYCLER_URL='https://github.com/rrwick/Autocycler/releases/download/v0.2.1/autocycler-linux-x86_64-gnu-v0.2.1.tar.gz'
-
 FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/flye.sh'
 MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
 RAVEN_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/raven.sh'
