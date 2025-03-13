@@ -5,8 +5,8 @@
 # # Where to put output files
 # data: data
 
-# method: autocycler
-method: flye
+method: autocycler
+# method: flye
 
 ########################################################################
 # Inputs data
