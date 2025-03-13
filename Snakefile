@@ -92,13 +92,13 @@ else:
             """
             lrge -qqq --threads {threads} {input} > {output}
             """
-    rule lrge_version:
-        output: DATA+"/versions/lrge.txt"
-        conda: "envs/lrge.yaml"
-        shell:
-            """
-            lrge --version 2>&1 | tee {output}
-            """
+rule lrge_version:
+    output: DATA+"/versions/lrge.txt"
+    conda: "envs/lrge.yaml"
+    shell:
+        """
+        lrge --version 2>&1 | tee {output}
+        """
             
 # ------------------------------------------------------------------------
 # run filtlong
@@ -519,7 +519,7 @@ rule make_summary:
         fastp_txt=DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
         filtlong_txt=DATA+"/versions/filtlong.txt",
         flye_txt=DATA+"/versions/flye.txt" if (config['method'] == 'autocycler' or config['method'] == 'flye') else [],
-        lrge_txt=DATA+"/versions/lrge.txt",
+        lrge_txt=DATA+"/versions/lrge.txt" if 'genome_size' not in config else [],
         medaka_txt=DATA+"/versions/medaka.txt",
         miniasm_txt=DATA+"/versions/miniasm.txt" if config['method'] == 'autocycler' else [],
         polypolish_txt=DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
