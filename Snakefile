@@ -61,18 +61,34 @@ rule download_raven_script:
 # collect the inputs
 # ------------------------------------------------------------------------
 
+def flatten(alist):
+    if alist == []:
+        return []
+    elif type(alist) is not list:
+        return [alist]
+    else:
+        return flatten(alist[0]) + flatten(alist[1:])
+    
+def get_input_files(name):
+    l = config[name]
+    if not isinstance(l, list):
+        l = [l]
+    l = [os.path.expanduser(p) for p in l]
+    l = [glob.glob(p) for p in l]
+    return flatten(l)
+
 rule make_raw_nanopore:
-    input: os.path.expanduser(config['nanopore'])
+    input: get_input_files('nanopore')
     output: DATA+"/inputs/raw_nanopore.fastq.gz"
     shell: "cat {input} > {output}"
 
 rule make_raw_short_R1:
-    input: os.path.expanduser(config['short_R1'])
+    input: get_input_files('short_R1')
     output: DATA+"/inputs/raw_short_R1.fastq.gz"
     shell: "cat {input} > {output}"
 
 rule make_raw_short_R2:
-    input: os.path.expanduser(config['short_R2'])
+    input: get_input_files('short_R2')
     output: DATA+"/inputs/raw_short_R2.fastq.gz"
     shell: "cat {input} > {output}"
 
