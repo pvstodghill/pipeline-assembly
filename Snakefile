@@ -82,15 +82,17 @@ rule make_raw_nanopore:
     output: DATA+"/inputs/raw_nanopore.fastq.gz"
     shell: "cat {input} > {output}"
 
-rule make_raw_short_R1:
-    input: get_input_files('short_R1')
-    output: DATA+"/inputs/raw_short_R1.fastq.gz"
-    shell: "cat {input} > {output}"
+if get_config('short_R1') != None:
+    rule make_raw_short_R1:
+        input: get_input_files('short_R1')
+        output: DATA+"/inputs/raw_short_R1.fastq.gz"
+        shell: "cat {input} > {output}"
 
-rule make_raw_short_R2:
-    input: get_input_files('short_R2')
-    output: DATA+"/inputs/raw_short_R2.fastq.gz"
-    shell: "cat {input} > {output}"
+if get_config('short_R2') != None:
+    rule make_raw_short_R2:
+        input: get_input_files('short_R2')
+        output: DATA+"/inputs/raw_short_R2.fastq.gz"
+        shell: "cat {input} > {output}"
 
 # ------------------------------------------------------------------------
 # estimate the genome size
@@ -336,27 +338,29 @@ rule medaka_version:
 # fastp
 # ------------------------------------------------------------------------
 
-rule run_fastp:
-    input:
-        r1=DATA+"/inputs/raw_short_R1.fastq.gz",
-        r2=DATA+"/inputs/raw_short_R2.fastq.gz"
-    output:
-        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
-        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
-        u=DATA+"/fastp/u.fastq.gz",
-        json=DATA+"/fastp/fastp.json",
-        html=DATA+"/fastp/fastp.html",
-    threads: 16 # fastp maxes at 16
-    conda: "envs/fastp.yaml"
-    shell:
-        """
-        fastp \
-            --thread {threads} \
-            --json {output.json} --html {output.html} \
-            --in1 {input.r1} --in2 {input.r2}  \
-            --out1 {output.r1} --out2 {output.r2} \
-            --unpaired1 {output.u} --unpaired2 {output.u}
-        """
+if (get_config('short_R1') != None) and (get_config('short_R2') != None):
+
+    rule run_fastp:
+        input:
+            r1=DATA+"/inputs/raw_short_R1.fastq.gz",
+            r2=DATA+"/inputs/raw_short_R2.fastq.gz"
+        output:
+            r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+            r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+            u=DATA+"/fastp/u.fastq.gz",
+            json=DATA+"/fastp/fastp.json",
+            html=DATA+"/fastp/fastp.html",
+        threads: 16 # fastp maxes at 16
+        conda: "envs/fastp.yaml"
+        shell:
+            """
+            fastp \
+                --thread {threads} \
+                --json {output.json} --html {output.html} \
+                --in1 {input.r1} --in2 {input.r2}  \
+                --out1 {output.r1} --out2 {output.r2} \
+                --unpaired1 {output.u} --unpaired2 {output.u}
+            """
 
 rule fastp_version:
     output: DATA+"/versions/fastp.txt"
@@ -370,35 +374,37 @@ rule fastp_version:
 # polypolish
 # ------------------------------------------------------------------------
 
-rule run_polypolish:
-    input:
-        draft=DATA+"/medaka/consensus.fasta",
-        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
-        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
-    output: DATA+"/polypolish/polished.fasta"
-    threads: 9999
-    conda: "envs/polypolish.yaml"
-    shell:
-        """
-        dir=$(dirname {output})
-        cp {input.draft} $dir/draft.fasta
-        cp {input.r1} $dir/r1.fastq.gz
-        cp {input.r2} $dir/r2.fastq.gz
-        coverage=$({PIPELINE}/scripts/fastq-coverage -p 0 -g $dir/draft.fasta $dir/r1.fastq.gz $dir/r2.fastq.gz)
-        cd $dir
-        bwa index draft.fasta
-        bwa mem -t {threads} -a draft.fasta r1.fastq.gz > align1.sam
-        bwa mem -t {threads} -a draft.fasta r2.fastq.gz > align2.sam
-        polypolish filter \
-            --in1 align1.sam --in2 align2.sam \
-            --out1 filtered1.sam --out2 filtered2.sam
-        if [ $coverage -le 25 ] ; then
-            CAREFUL=--careful
-        else
-            CAREFUL=
-        fi
-        polypolish polish $CAREFUL draft.fasta filtered1.sam filtered2.sam > polished.fasta
-        """
+if (get_config('short_R1') != None) and (get_config('short_R2') != None):
+
+    rule run_polypolish:
+        input:
+            draft=DATA+"/medaka/consensus.fasta",
+            r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+            r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+        output: DATA+"/polypolish/polished.fasta"
+        threads: 9999
+        conda: "envs/polypolish.yaml"
+        shell:
+            """
+            dir=$(dirname {output})
+            cp {input.draft} $dir/draft.fasta
+            cp {input.r1} $dir/r1.fastq.gz
+            cp {input.r2} $dir/r2.fastq.gz
+            coverage=$({PIPELINE}/scripts/fastq-coverage -p 0 -g $dir/draft.fasta $dir/r1.fastq.gz $dir/r2.fastq.gz)
+            cd $dir
+            bwa index draft.fasta
+            bwa mem -t {threads} -a draft.fasta r1.fastq.gz > align1.sam
+            bwa mem -t {threads} -a draft.fasta r2.fastq.gz > align2.sam
+            polypolish filter \
+                --in1 align1.sam --in2 align2.sam \
+                --out1 filtered1.sam --out2 filtered2.sam
+            if [ $coverage -le 25 ] ; then
+                CAREFUL=--careful
+            else
+                CAREFUL=
+            fi
+            polypolish polish $CAREFUL draft.fasta filtered1.sam filtered2.sam > polished.fasta
+            """
 
 rule polypolish_version:
     output: DATA+"/versions/polypolish.txt"
@@ -412,19 +418,21 @@ rule polypolish_version:
 # pypolca
 # ------------------------------------------------------------------------
 
-rule run_pypolca:
-    input:
-        draft=DATA+"/polypolish/polished.fasta",
-        r1=DATA+"/fastp/trimmed_R1.fastq.gz",
-        r2=DATA+"/fastp/trimmed_R2.fastq.gz",
-    output: DATA+"/pypolca/pypolca_corrected.fasta"
-    threads: 16 # weird samtools memory problem
-    conda: "envs/pypolca.yaml"
-    shell:
-        """
-        pypolca run --force -a {input.draft} -1 {input.r1} -2 {input.r2} \
-            -t {threads} -o $(dirname {output}) --careful
-        """
+if (get_config('short_R1') != None) and (get_config('short_R2') != None):
+
+    rule run_pypolca:
+        input:
+            draft=DATA+"/polypolish/polished.fasta",
+            r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+            r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+        output: DATA+"/pypolca/pypolca_corrected.fasta"
+        threads: 16 # weird samtools memory problem
+        conda: "envs/pypolca.yaml"
+        shell:
+            """
+            pypolca run --force -a {input.draft} -1 {input.r1} -2 {input.r2} \
+                -t {threads} -o $(dirname {output}) --careful
+            """
 
 rule pypolca_version:
     output: DATA+"/versions/pypolca.txt"
@@ -435,12 +443,30 @@ rule pypolca_version:
         """
 
 # ------------------------------------------------------------------------
+# Create pipeline output assembly
+# ------------------------------------------------------------------------
+
+if (get_config('short_R1') != None) and (get_config('short_R2') != None):
+
+    rule create_intermediate:
+        input: DATA+"/pypolca/pypolca_corrected.fasta"
+        output: DATA+"/intermediate.fasta"
+        shell: "cp -a {input} {output}"
+
+else:
+    
+    rule create_intermediate:
+        input: DATA+"/medaka/consensus.fasta"
+        output: DATA+"/intermediate.fasta"
+        shell: "cp -a {input} {output}"
+
+# ------------------------------------------------------------------------
 # Run ReferenceSeeker
 # ------------------------------------------------------------------------
 
 if get_config('refseek_dir') != None:
     rule run_referenceseeker:
-        input: DATA+"/pypolca/pypolca_corrected.fasta"
+        input: DATA+"/intermediate.fasta"
         output: DATA+"/referenceseeker.log"
         params:
             refseek_dir=os.path.expanduser(get_config('refseek_dir')),
@@ -478,7 +504,7 @@ rule run_git:
         DATA+"/versions/pypolca.txt",
         DATA+"/versions/raven.txt",
         DATA+"/versions/referenceseeker.txt",
-        DATA+"/pypolca/pypolca_corrected.fasta",
+        DATA+"/intermediate.fasta",
         (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
     output: DATA+"/git-autocycler.log"
     shell:
