@@ -5,6 +5,9 @@
 # # Where to put output files
 # data: data
 
+# method: autocycler
+method: flye
+
 ########################################################################
 # Inputs data
 ########################################################################
@@ -21,12 +24,18 @@ nanopore: .../long.fq.gz
 ## genome_size: 5m
 
 ########################################################################
-# Pipeline parameters
+# Autocycler parameters
 ########################################################################
 
 # Number of subsamples to generate of the entire long read set. If not
 # set, defaults to "4".
 ## subsamples: 4
+
+########################################################################
+# Flye parameters
+########################################################################
+
+#flye_args: --asm-coverage 40
 
 ########################################################################
 # Referenceseeker: path and params

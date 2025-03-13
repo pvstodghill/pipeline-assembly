@@ -7,10 +7,6 @@ DATA=config['data'] if 'data' in config else "data"
 BIN=DATA+"/bin"
 PIPELINE=os.path.dirname(workflow.snakefile)
 
-FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/flye.sh'
-MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
-RAVEN_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/raven.sh'
-
 GZIP="pigz"
 
 def get_config(name, default=None):
@@ -29,33 +25,7 @@ ASSEMBLIES_FA = \
     expand(DATA+"/assemblies/{name}_{i}.fasta",
            name=ASSEMBLERS, i=SUBSAMPLES_IS)
 
-# ------------------------------------------------------------------------
-# download autocycler and auxiliary scripts
-# ------------------------------------------------------------------------
-
-rule download_flye_script:
-    output: BIN+"/flye.sh"
-    shell:
-        """
-        wget -O {output} -q {FLYE_SH_URL}
-        chmod +x {output}
-        """
-
-rule download_miniasm_script:
-    output: BIN+"/miniasm.sh"
-    shell:
-        """
-        wget -O {output} -q {MINIASM_SH_URL}
-        chmod +x {output}
-        """
-
-rule download_raven_script:
-    output: BIN+"/raven.sh"
-    shell:
-        """
-        wget -O {output} -q {RAVEN_SH_URL}
-        chmod +x {output}
-        """
+RAW_ASSEMBLY_FASTA = DATA+"/autocycler/consensus_assembly.fasta" if config['method'] == 'autocycler' else DATA+"/flye/assembly.fasta" if config['method'] == 'flye' else "error"
 
 # ------------------------------------------------------------------------
 # collect the inputs
@@ -152,8 +122,41 @@ rule filtlong_version:
         """
 
 # ------------------------------------------------------------------------
-# autocycler subsample
+# autocycler method
 # ------------------------------------------------------------------------
+
+# === download autocycler and auxiliary scripts ===
+
+FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/flye.sh'
+MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
+RAVEN_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/raven.sh'
+
+
+rule download_flye_script:
+    output: BIN+"/flye.sh"
+    shell:
+        """
+        wget -O {output} -q {FLYE_SH_URL}
+        chmod +x {output}
+        """
+
+rule download_miniasm_script:
+    output: BIN+"/miniasm.sh"
+    shell:
+        """
+        wget -O {output} -q {MINIASM_SH_URL}
+        chmod +x {output}
+        """
+
+rule download_raven_script:
+    output: BIN+"/raven.sh"
+    shell:
+        """
+        wget -O {output} -q {RAVEN_SH_URL}
+        chmod +x {output}
+        """
+
+# === autocycler subsample ===
 
 rule make_subsamples:
     input:
@@ -172,16 +175,7 @@ rule make_subsamples:
         		  --count "{params.subsamples}"
         """
 
-rule autocycler_version:
-    output: DATA+"/versions/autocycler.txt"
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler --version 2>&1 | tee {output}
-        """
-# ------------------------------------------------------------------------
-# Run assembler {name} on subsample {i}
-# ------------------------------------------------------------------------
+# === Run assembler {name} on subsample {i} ===
 
 rule make_one_assembly:
     input:
@@ -199,6 +193,85 @@ rule make_one_assembly:
             {threads} $(cat {input.gs})
         """
 
+# === autocycler compress ===
+
+rule run_autocycler_compress:
+    input: 
+        assemblies=ASSEMBLIES_FA
+    output: DATA+"/autocycler/input_assemblies.gfa"
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler compress \
+            --assemblies_dir $(dirname {input.assemblies[0]}) \
+            --autocycler_dir $(dirname {output})
+        """
+
+# === autocycler cluster ===
+
+checkpoint run_autocycler_cluster:
+    input: 
+        compresses_assemblies=DATA+"/autocycler/input_assemblies.gfa"
+    output: directory(DATA+"/autocycler/clustering")
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler cluster \
+            --autocycler_dir $(dirname {input.compresses_assemblies})
+        """
+
+def list_of_clusters(wildcards):
+    ckp = checkpoints.run_autocycler_cluster.get(**wildcards).output[0]
+    clusters = glob.glob(DATA+"/autocycler/clustering/qc_pass/cluster_*")
+    return list(clusters)
+
+# === autocycler trim ===
+
+rule run_autocycler_trim:
+    input:
+        untrimmed="{cluster}/1_untrimmed.gfa"
+    output: "{cluster}/2_trimmed.gfa"
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler trim --cluster_dir $(dirname {input.untrimmed})
+        """
+
+# === autocycler resolve ===
+
+rule run_autocycler_resolve:
+    input:
+        trimmed="{cluster}/2_trimmed.gfa"
+    output: "{cluster}/5_final.gfa"
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler resolve --cluster_dir $(dirname {input.trimmed})
+        """
+
+# === autocycler combine ===
+
+rule run_autocycler_combine:
+    input:
+        gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
+    output: DATA+"/autocycler/consensus_assembly.fasta"
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler combine \
+            --autocycler_dir $(dirname {output}) \
+            --in_gfas {input.gfas}
+        """
+
+# === generate version info ===
+
+rule autocycler_version:
+    output: DATA+"/versions/autocycler.txt"
+    conda: "envs/autocycler.yaml"
+    shell:
+        """
+        autocycler --version 2>&1 | tee {output}
+        """
 rule flye_version:
     output: DATA+"/versions/flye.txt"
     conda: "envs/flye.yaml"
@@ -224,83 +297,26 @@ rule raven_version:
         """
 
 # ------------------------------------------------------------------------
-# autocycler compress
+# flye method
 # ------------------------------------------------------------------------
 
-rule run_autocycler_compress:
-    input: 
-        assemblies=ASSEMBLIES_FA
-    output: DATA+"/autocycler/input_assemblies.gfa"
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler compress \
-            --assemblies_dir $(dirname {input.assemblies[0]}) \
-            --autocycler_dir $(dirname {output})
-        """
-
-# ------------------------------------------------------------------------
-# autocycler cluster
-# ------------------------------------------------------------------------
-
-checkpoint run_autocycler_cluster:
-    input: 
-        compresses_assemblies=DATA+"/autocycler/input_assemblies.gfa"
-    output: directory(DATA+"/autocycler/clustering")
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler cluster \
-            --autocycler_dir $(dirname {input.compresses_assemblies})
-        """
-
-def list_of_clusters(wildcards):
-    ckp = checkpoints.run_autocycler_cluster.get(**wildcards).output[0]
-    clusters = glob.glob(DATA+"/autocycler/clustering/qc_pass/cluster_*")
-    return list(clusters)
-
-# ------------------------------------------------------------------------
-# autocycler trim
-# -----------------------------------------------------------------------
-
-rule run_autocycler_trim:
+rule run_flye:
     input:
-        untrimmed="{cluster}/1_untrimmed.gfa"
-    output: "{cluster}/2_trimmed.gfa"
-    conda: "envs/autocycler.yaml"
+        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        gs=DATA+"/genome_size.txt"
+    output: DATA+"/flye/assembly.fasta"
+    params:
+        args = get_config('flye_args','')
+    threads: 9999
+    conda: "envs/flye.yaml"
     shell:
         """
-        autocycler trim --cluster_dir $(dirname {input.untrimmed})
-        """
-
-# ------------------------------------------------------------------------
-# autocycler resolve
-# -----------------------------------------------------------------------
-
-rule run_autocycler_resolve:
-    input:
-        trimmed="{cluster}/2_trimmed.gfa"
-    output: "{cluster}/5_final.gfa"
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler resolve --cluster_dir $(dirname {input.trimmed})
-        """
-
-# ------------------------------------------------------------------------
-# autocycler combine
-# ------------------------------------------------------------------------
-
-rule run_autocycler_combine:
-    input:
-        gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
-    output: DATA+"/autocycler/consensus_assembly.fasta"
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler combine \
-            --autocycler_dir $(dirname {output}) \
-            --in_gfas {input.gfas}
+        flye \
+            --nano-raw {input.long_fq} \
+            --genome-size $(cat {input.gs}) \
+            --out-dir $(dirname {output}) \
+            --threads {threads} \
+            {params.args}
         """
 
 # ------------------------------------------------------------------------
@@ -310,7 +326,7 @@ rule run_autocycler_combine:
 rule run_medaka:
     input:
         reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
-        consensus=DATA+"/autocycler/consensus_assembly.fasta"
+        unpolished=RAW_ASSEMBLY_FASTA
     output: DATA+"/medaka/consensus.fasta"
     params:
         medaka_args="-b 10"
@@ -321,7 +337,7 @@ rule run_medaka:
         medaka_consensus \
             {params.medaka_args} \
             -i {input.reads} \
-            -d {input.consensus} \
+            -d {input.unpolished} \
             -o $(dirname {output}) \
             -t {threads} \
             --bacteria
@@ -524,15 +540,15 @@ rule run_git:
 
 rule make_summary:
     input:
-        autocycler_assembly=DATA+"/autocycler/consensus_assembly.fasta",
+        unpolished=RAW_ASSEMBLY_FASTA,
         referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
-    output: DATA+"/summary-autocycler.log"
+    output: DATA+"/summary-assembly.log"
     shell:
         """
         (
             echo
-            echo === autocycler summary ===
-            fgrep '>' {input.autocycler_assembly}
+            echo === assembly summary ===
+            fgrep '>' {input.unpolished}
             if [ "{input.referenceseeker_log}" ] ; then
                 echo 
                 echo === referenceseeker results ===
@@ -551,7 +567,7 @@ rule make_summary:
 
 rule all:
     input:
-        DATA+"/summary-autocycler.log",
-        DATA+"/git-autocycler.log"
+        DATA+"/summary-assembly.log",
+        DATA+"/git-assembly.log"
     default_target: True
 

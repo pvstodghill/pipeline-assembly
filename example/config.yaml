@@ -1,28 +1,5 @@
-########################################################################
-# Basic parameters
-########################################################################
-
-# # Where to put output files
-# data: data
-
-strain: example
-version: 
-
-########################################################################
-# Inputs data
-########################################################################
-
-# raw, unpolished long reads
+#method: autocycler
+method: flye
 nanopore: example/reads.fastq.gz
+#refseek_dir: ~/scratch/referenceseeker
 
-# the expected size of the genome. if unset, will be computed
-# automatically.
-## genome_size: 242000
-
-########################################################################
-# Pipeline parameters
-########################################################################
-
-# Number of subsamples to generate of the entire long read set. If not
-# set, defaults to "4".
-## subsamples: 4

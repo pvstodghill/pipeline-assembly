@@ -1,7 +1,12 @@
-# pipeline-autocycler
+# pipeline-assembly
 
-Pipeline for [Autocycler](https://github.com/rrwick/Autocycler), a
-package for consensus hybrid assemblies for bacterial genomes.
+A pipeline for assembling bacteria genomes using one of several
+methods.
+
+The methods include,
+
+- [Autocycler](https://github.com/rrwick/Autocycler) - fully
+  automatic, consensus hybrid assembly.
 
 ## Cloning the repo
 
