@@ -507,44 +507,25 @@ rule referenceseeker_version:
         """
 
 # ------------------------------------------------------------------------
-# Check Git status
-# ------------------------------------------------------------------------
-
-rule run_git:
-    input:
-        DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
-        DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
-        DATA+"/versions/filtlong.txt",
-        DATA+"/versions/flye.txt" if (config['method'] == 'autocycler' or config['method'] == 'flye') else [],
-        DATA+"/versions/lrge.txt",
-        DATA+"/versions/medaka.txt",
-        DATA+"/versions/miniasm.txt" if config['method'] == 'autocycler' else [],
-        DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
-        DATA+"/versions/pypolca.txt" if 'short_R1' in config else [],
-        DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
-        DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
-        DATA+"/intermediate.fasta",
-        (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
-    output: DATA+"/git-assembly.log"
-    shell:
-        """
-	(
-	    cd {PIPELINE}
-	    echo
-	    ( set -x ; git status )
-	    echo
-	    ( set -x ; git log -n1 )
-	) 2>&1 | tee {output}
-        """ 
-
-# ------------------------------------------------------------------------
 # Generate the summary
 # ------------------------------------------------------------------------
 
 rule make_summary:
     input:
         unpolished=RAW_ASSEMBLY_FASTA,
-        referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
+        intermediate_fasta=DATA+"/intermediate.fasta",
+        referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else []),
+        autocycler_txt=DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
+        fastp_txt=DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
+        filtlong_txt=DATA+"/versions/filtlong.txt",
+        flye_txt=DATA+"/versions/flye.txt" if (config['method'] == 'autocycler' or config['method'] == 'flye') else [],
+        lrge_txt=DATA+"/versions/lrge.txt",
+        medaka_txt=DATA+"/versions/medaka.txt",
+        miniasm_txt=DATA+"/versions/miniasm.txt" if config['method'] == 'autocycler' else [],
+        polypolish_txt=DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
+        pypolca_txt=DATA+"/versions/pypolca.txt" if 'short_R1' in config else [],
+        raven_txt=DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
+        referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
     output: DATA+"/summary-assembly.log"
     shell:
         """
@@ -562,7 +543,24 @@ rule make_summary:
             fi
         ) | tee {output}
         """
-                
+
+# ------------------------------------------------------------------------
+# Check Git status
+# ------------------------------------------------------------------------
+
+rule run_git:
+    input: DATA+"/summary-assembly.log"
+    output: DATA+"/git-assembly.log"
+    shell:
+        """
+	(
+	    cd {PIPELINE}
+	    echo
+	    ( set -x ; git status )
+	    echo
+	    ( set -x ; git log -n1 )
+	) 2>&1 | tee {output}
+        """ 
 
 # ------------------------------------------------------------------------
 # Entry point
