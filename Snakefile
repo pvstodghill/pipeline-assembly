@@ -45,7 +45,10 @@ def get_input_files(name):
         l = [l]
     l = [os.path.expanduser(p) for p in l]
     l = [glob.glob(p) for p in l]
-    return flatten(l)
+    l = flatten(l)
+    if l == []:
+        raise FileNotFoundError('input files for \''+name+'\' not found.')
+    return l
 
 rule make_raw_nanopore:
     input: get_input_files('nanopore')
@@ -509,20 +512,20 @@ rule referenceseeker_version:
 
 rule run_git:
     input:
-        DATA+"/versions/autocycler.txt",
-        DATA+"/versions/fastp.txt",
+        DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
+        DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
         DATA+"/versions/filtlong.txt",
-        DATA+"/versions/flye.txt",
+        DATA+"/versions/flye.txt" if (config['method'] == 'autocycler' or config['method'] == 'flye') else [],
         DATA+"/versions/lrge.txt",
         DATA+"/versions/medaka.txt",
-        DATA+"/versions/miniasm.txt",
-        DATA+"/versions/polypolish.txt",
-        DATA+"/versions/pypolca.txt",
-        DATA+"/versions/raven.txt",
-        DATA+"/versions/referenceseeker.txt",
+        DATA+"/versions/miniasm.txt" if config['method'] == 'autocycler' else [],
+        DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
+        DATA+"/versions/pypolca.txt" if 'short_R1' in config else [],
+        DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
+        DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
         DATA+"/intermediate.fasta",
         (DATA+"/referenceseeker.log" if 'refseek_dir' in config else [])
-    output: DATA+"/git-autocycler.log"
+    output: DATA+"/git-assembly.log"
     shell:
         """
 	(
