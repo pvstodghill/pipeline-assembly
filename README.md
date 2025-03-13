@@ -20,22 +20,16 @@ You will want to install the following:
 - [Conda](https://conda.io)
 - [Perl](https://www.perl.org/)
 
-## Configuring the pipeline
-
-**Create the configuration files**
-
-For the `example` data,
+## Running on the example data
 
 1. `( cd example ; bash download.bash )`
 
-1. Copy `example/config.yaml` to  `config.yaml`.
+1. `snakemake --use-conda --configfile example/config.yaml`
 
-To run the pipeline on your own data,
+## Running on your own data,
 
 1. Copy `config.template.yaml` to `config.yaml`.  Edit `config.yaml`
    according to your needs and local environment.
 
-## Running the pipeline
-
-`snakemake --use-conda`
+1. `snakemake --use-conda`
 
