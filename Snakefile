@@ -533,10 +533,13 @@ rule make_summary:
             echo
             echo === autocycler summary ===
             fgrep '>' {input.autocycler_assembly}
-            if [ -e {input.referenceseeker_log} ] ; then
+            if [ "{input.referenceseeker_log}" ] ; then
                 echo 
                 echo === referenceseeker results ===
-                fgrep -A10 '#ID' {input.referenceseeker_log}
+                fgrep -A10 '#ID' "{input.referenceseeker_log}"
+            else
+                echo 
+                echo === no referenceseeker results ===
             fi
         ) | tee {output}
         """
