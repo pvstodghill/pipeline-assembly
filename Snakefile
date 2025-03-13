@@ -346,7 +346,7 @@ rule run_fastp:
         u=DATA+"/fastp/u.fastq.gz",
         json=DATA+"/fastp/fastp.json",
         html=DATA+"/fastp/fastp.html",
-    threads: 9999
+    threads: 16 # fastp maxes at 16
     conda: "envs/fastp.yaml"
     shell:
         """
