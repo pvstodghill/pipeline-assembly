@@ -496,7 +496,7 @@ if get_config('refseek_dir') != None:
             """
             REFSEEK={params.refseek_dir} \
             {PIPELINE}/scripts/run-referenceseeker -t {threads} {params.refseek_args} {input} \
-                | tee {output}
+                2>&1 | tee {output}
             """
 
 rule referenceseeker_version:
