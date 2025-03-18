@@ -491,10 +491,11 @@ if get_config('refseek_dir') != None:
             refseek_dir=os.path.expanduser(get_config('refseek_dir')),
             refseek_args=get_config('refseek_args','-a 0.90 -u -r -g')
         conda: "envs/referenceseeker.yaml"
+        threads: 9999
         shell:
             """
             REFSEEK={params.refseek_dir} \
-            {PIPELINE}/scripts/run-referenceseeker {params.refseek_args} {input} \
+            {PIPELINE}/scripts/run-referenceseeker {params.refseek_args} --threads {threads} {input} \
                 | tee {output}
             """
 
