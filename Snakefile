@@ -489,7 +489,7 @@ if get_config('refseek_dir') != None:
         output: DATA+"/referenceseeker.log"
         params:
             refseek_dir=os.path.expanduser(get_config('refseek_dir')),
-            refseek_args=get_config('refseek_args','-a 0.95 -r')
+            refseek_args=get_config('refseek_args','-a 0.90 -u -r -g')
         conda: "envs/referenceseeker.yaml"
         shell:
             """
