@@ -495,7 +495,7 @@ if get_config('refseek_dir') != None:
         shell:
             """
             REFSEEK={params.refseek_dir} \
-            {PIPELINE}/scripts/run-referenceseeker {params.refseek_args} --threads {threads} {input} \
+            {PIPELINE}/scripts/run-referenceseeker -t {threads} {params.refseek_args} {input} \
                 | tee {output}
             """
 
