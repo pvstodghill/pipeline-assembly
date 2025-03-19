@@ -513,9 +513,9 @@ rule referenceseeker_version:
 
 rule run_unicycler:
     input:
-        short_r1=get_input_files('trimmed_R1_fq'),
-        short_r2=get_input_files('trimmed_R2_fq'),
-        long_reads=get_input_files('filtered_long_fq')
+        short_r1=DATA+"/fastp/trimmed_R1.fastq.gz",
+        short_r2=DATA+"/fastp/trimmed_R2.fastq.gz",
+        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
     output: DATA+"/unicycler/assembly.fasta"
     threads: 9999
     conda: "envs/unicycler.yaml"
@@ -542,7 +542,7 @@ rule unicycler_version:
 
 rule run_dnadiff:
     input:
-        raw=get_input_files('assembly_fa'),
+        raw=DATA+"/intermediate.fasta",
         unic=DATA+"/unicycler/assembly.fasta"
     output: DATA+"/dnadiff/out.report"
     conda: "envs/mummer4.yaml"
@@ -557,7 +557,7 @@ rule run_dnadiff:
 
 rule dnadiff_version:
     output: DATA+"/versions/dnadiff.txt"
-    conda: "envs/dnadiff.yaml"
+    conda: "envs/mummer4.yaml"
     shell:
         """
         dnadiff --version 2>&1 | tee {output}
@@ -584,7 +584,6 @@ rule make_summary:
         raven_txt=DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
         unicycler_txt=DATA+"/versions/unicycler.txt",
         dnadiff_txt=DATA+"/versions/dnadiff.txt",
-        flye_info=DATA+"/flye/assembly_info.txt",
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
         dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'trimmed_R1_fq' in config else []),
     output: DATA+"/summary-assembly.log"
