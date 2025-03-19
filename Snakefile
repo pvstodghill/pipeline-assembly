@@ -528,6 +528,14 @@ rule run_unicycler:
           -o $(dirname {output})
         """
 
+rule unicycler_version:
+    output: DATA+"/versions/unicycler.txt"
+    conda: "envs/unicycler.yaml"
+    shell:
+        """
+        unicycler --version 2>&1 | tee {output}
+        """
+
 # ------------------------------------------------------------------------
 # Compare input genome and Unicycler results with `dnadiff`
 # ------------------------------------------------------------------------
@@ -545,6 +553,14 @@ rule run_dnadiff:
         cp {input.unic} $dir/unicycler.fasta
         cd $dir
         dnadiff raw.fasta unicycler.fasta
+        """
+
+rule dnadiff_version:
+    output: DATA+"/versions/dnadiff.txt"
+    conda: "envs/dnadiff.yaml"
+    shell:
+        """
+        dnadiff --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -566,6 +582,8 @@ rule make_summary:
         polypolish_txt=DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
         pypolca_txt=DATA+"/versions/pypolca.txt" if 'short_R1' in config else [],
         raven_txt=DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
+        unicycler_txt=DATA+"/versions/unicycler.txt",
+        dnadiff_txt=DATA+"/versions/dnadiff.txt",
         flye_info=DATA+"/flye/assembly_info.txt",
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
         dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'trimmed_R1_fq' in config else []),
