@@ -526,6 +526,7 @@ rule make_summary:
         polypolish_txt=DATA+"/versions/polypolish.txt" if 'short_R1' in config else [],
         pypolca_txt=DATA+"/versions/pypolca.txt" if 'short_R1' in config else [],
         raven_txt=DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
+        flye_info=DATA+"/flye/assembly_info.txt",
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
     output: DATA+"/summary-assembly.log"
     shell:
@@ -533,7 +534,11 @@ rule make_summary:
         (
             echo
             echo === assembly summary ===
-            fgrep '>' {input.unpolished}
+            if [ -e {DATA}/flye/assembly_info.txt ] ; then
+        	cat {DATA}/flye/assembly_info.txt
+            else
+        	fgrep '>' {input.unpolished}
+            fi
             if [ "{input.referenceseeker_log}" ] ; then
                 echo 
                 echo === referenceseeker results ===
