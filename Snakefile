@@ -508,6 +508,46 @@ rule referenceseeker_version:
         """
 
 # ------------------------------------------------------------------------
+# Run Unicycler
+# ------------------------------------------------------------------------
+
+rule run_unicycler:
+    input:
+        short_r1=get_input_files('trimmed_R1_fq'),
+        short_r2=get_input_files('trimmed_R2_fq'),
+        long_reads=get_input_files('filtered_long_fq')
+    output: DATA+"/unicycler/assembly.fasta"
+    threads: 9999
+    conda: "envs/unicycler.yaml"
+    shell:
+        """
+        unicycler -t {threads} \
+          -1 {input.short_r1} \
+          -2 {input.short_r2} \
+          -l {input.long_reads} \
+          -o $(dirname {output})
+        """
+
+# ------------------------------------------------------------------------
+# Compare input genome and Unicycler results with `dnadiff`
+# ------------------------------------------------------------------------
+
+rule run_dnadiff:
+    input:
+        raw=get_input_files('assembly_fa'),
+        unic=DATA+"/unicycler/assembly.fasta"
+    output: DATA+"/dnadiff/out.report"
+    conda: "envs/mummer4.yaml"
+    shell:
+        """
+        dir=$(dirname {output})
+        cp {input.raw} $dir/raw.fasta
+        cp {input.unic} $dir/unicycler.fasta
+        cd $dir
+        dnadiff raw.fasta unicycler.fasta
+        """
+
+# ------------------------------------------------------------------------
 # Generate the summary
 # ------------------------------------------------------------------------
 
@@ -528,6 +568,7 @@ rule make_summary:
         raven_txt=DATA+"/versions/raven.txt" if config['method'] == 'autocycler' else [],
         flye_info=DATA+"/flye/assembly_info.txt",
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
+        dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'trimmed_R1_fq' in config else []),
     output: DATA+"/summary-assembly.log"
     shell:
         """
@@ -546,6 +587,11 @@ rule make_summary:
             else
                 echo 
                 echo === no referenceseeker results ===
+            fi
+            if [ "{input.dnadiff_report}" ] ; then
+                echo 
+                echo === autocycler vs. unicycler ===
+                head -n13 {input.dnadiff_report}  | tail -n+4
             fi
         ) | tee {output}
         """
