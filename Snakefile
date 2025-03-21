@@ -593,7 +593,7 @@ rule make_summary:
             echo
             echo === assembly summary ===
             if [ -e {DATA}/autocycler/consensus_assembly.fasta ] ; then
-        	cat {DATA}/autocycler/consensus_assembly.fasta
+        	fgrep '>' {DATA}/autocycler/consensus_assembly.fasta
             elif [ -e {DATA}/flye/assembly_info.txt ] ; then
         	cat {DATA}/flye/assembly_info.txt
             else
