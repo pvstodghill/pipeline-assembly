@@ -585,7 +585,7 @@ rule make_summary:
         unicycler_txt=DATA+"/versions/unicycler.txt",
         dnadiff_txt=DATA+"/versions/dnadiff.txt",
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
-        dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'trimmed_R1_fq' in config else []),
+        dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'short_R1' in config else []),
     output: DATA+"/summary-assembly.log"
     shell:
         """
@@ -609,7 +609,7 @@ rule make_summary:
             fi
             if [ "{input.dnadiff_report}" ] ; then
                 echo 
-                echo === autocycler vs. unicycler ===
+                echo === vs. unicycler ===
                 head -n13 {input.dnadiff_report}  | tail -n+4
             fi
         ) | tee {output}
