@@ -315,7 +315,7 @@ rule run_flye:
     shell:
         """
         flye \
-            --nano-raw {input.long_fq} \
+            --nano-hq {input.long_fq} \
             --genome-size $(cat {input.gs}) \
             --out-dir $(dirname {output}) \
             --threads {threads} \
