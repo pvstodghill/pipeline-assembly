@@ -258,12 +258,14 @@ rule run_autocycler_resolve:
 rule run_autocycler_combine:
     input:
         gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
-    output: DATA+"/autocycler/consensus_assembly.fasta"
+    output:
+        fasta=DATA+"/autocycler/consensus_assembly.fasta",
+        gfa=DATA+"/autocycler/consensus_assembly.gfa"
     conda: "envs/autocycler.yaml"
     shell:
         """
         autocycler combine \
-            --autocycler_dir $(dirname {output}) \
+            --autocycler_dir $(dirname {output.fasta}) \
             --in_gfas {input.gfas}
         """
 
