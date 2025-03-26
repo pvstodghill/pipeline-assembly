@@ -26,6 +26,7 @@ ASSEMBLIES_FA = \
            name=ASSEMBLERS, i=SUBSAMPLES_IS)
 
 RAW_ASSEMBLY_FASTA = DATA+"/autocycler/consensus_assembly.fasta" if config['method'] == 'autocycler' else DATA+"/flye/assembly.fasta" if config['method'] == 'flye' else "error"
+RAW_ASSEMBLY_GFA = DATA+"/autocycler/consensus_assembly.gfa" if config['method'] == 'autocycler' else DATA+"/flye/assembly_graph.gfa" if config['method'] == 'flye' else "error"
 
 # ------------------------------------------------------------------------
 # collect the inputs
@@ -467,17 +468,22 @@ rule pypolca_version:
 
 if (get_config('short_R1') != None) and (get_config('short_R2') != None):
 
-    rule create_intermediate:
+    rule create_intermediate_fasta:
         input: DATA+"/pypolca/pypolca_corrected.fasta"
         output: DATA+"/intermediate.fasta"
         shell: "cp -a {input} {output}"
 
 else:
     
-    rule create_intermediate:
+    rule create_intermediate_fasta:
         input: DATA+"/medaka/consensus.fasta"
         output: DATA+"/intermediate.fasta"
         shell: "cp -a {input} {output}"
+
+rule create_intermediate_gfa:
+    input: {RAW_ASSEMBLY_GFA}
+    output: DATA+"/intermediate.gfa"
+    shell: "cp -a {input} {output}"
 
 # ------------------------------------------------------------------------
 # Run ReferenceSeeker
@@ -571,6 +577,7 @@ rule make_summary:
     input:
         unpolished=RAW_ASSEMBLY_FASTA,
         intermediate_fasta=DATA+"/intermediate.fasta",
+        intermediate_gfa=DATA+"/intermediate.gfa",
         referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else []),
         autocycler_txt=DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
         fastp_txt=DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
