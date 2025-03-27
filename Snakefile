@@ -597,18 +597,24 @@ rule make_summary:
         referenceseeker_txt=DATA+"/versions/referenceseeker.txt" if 'refseek_dir' in config else [],
         dnadiff_report=(DATA+"/dnadiff/out.report" if 'skip_unicycler' not in config and 'short_R1' in config else []),
     output: DATA+"/summary-assembly.log"
+    params:
+        method=config['method'],
     shell:
         """
         (
             echo
             echo === assembly summary ===
-            if [ -e {DATA}/autocycler/consensus_assembly.fasta ] ; then
+            case {params.method} in
+            autocycler)
         	fgrep '>' {DATA}/autocycler/consensus_assembly.fasta
-            elif [ -e {DATA}/flye/assembly_info.txt ] ; then
+        	;;
+            flye)
         	cat {DATA}/flye/assembly_info.txt
-            else
-        	fgrep '>' {input.unpolished}
-            fi
+		;;
+            *)
+        	echo 1>&2 cannot happen: {params.method}
+        	exit 1
+            esac
             if [ "{input.referenceseeker_log}" ] ; then
                 echo 
                 echo === referenceseeker results ===
