@@ -255,7 +255,8 @@ rule run_autocycler_resolve:
 
 # === autocycler combine ===
 
-rule run_autocycler_combine:
+#rule run_autocycler_combine:
+rule run_autocycler:
     input:
         gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
     output:
