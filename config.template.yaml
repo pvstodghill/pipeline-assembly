@@ -2,11 +2,12 @@
 # Basic parameters
 ########################################################################
 
-# # Where to put output files
-# data: data
+# Where to put output files
+## data: data
 
-method: autocycler
+# method: external
 # method: flye
+method: autocycler
 
 ########################################################################
 # Inputs data
@@ -15,13 +16,17 @@ method: autocycler
 # raw, unpolished long reads
 nanopore: .../long.fq.gz
 
-# # raw, unpolished Illumina reads
-# short_R1: .../short_R1.fastq.gz
-# short_R2: .../short_R2.fastq.gz
+# raw, unpolished Illumina reads
+## short_R1: .../short_R1.fastq.gz
+## short_R2: .../short_R2.fastq.gz
 
 # the expected size of the genome. if unset, will be computed
 # automatically.
 ## genome_size: 5m
+
+# assemble produced externally, for method=external
+## input_fasta: .../plasmidsaurus.fasta     # required
+## input_gfa: .../plasmidsaurus.gfa         # optional
 
 ########################################################################
 # Autocycler parameters

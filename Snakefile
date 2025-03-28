@@ -25,8 +25,24 @@ ASSEMBLIES_FA = \
     expand(DATA+"/assemblies/{name}_{i}.fasta",
            name=ASSEMBLERS, i=SUBSAMPLES_IS)
 
-RAW_ASSEMBLY_FASTA = DATA+"/autocycler/consensus_assembly.fasta" if config['method'] == 'autocycler' else DATA+"/flye/assembly.fasta" if config['method'] == 'flye' else "error"
-RAW_ASSEMBLY_GFA = DATA+"/autocycler/consensus_assembly.gfa" if config['method'] == 'autocycler' else DATA+"/flye/assembly_graph.gfa" if config['method'] == 'flye' else "error"
+def compute_raw_assembly_fasta():
+    if config['method'] == 'autocycler':
+        return DATA+"/autocycler/consensus_assembly.fasta"
+    elif config['method'] == 'flye':
+        return DATA+"/flye/assembly.fasta"
+    else:
+        return []
+
+def compute_raw_assembly_gfa():
+    if config['method'] == 'autocycler':
+        return DATA+"/autocycler/consensus_assembly.gfa"
+    elif config['method'] == 'flye':
+        return DATA+"/flye/assembly.gfa"
+    else:
+        []
+
+RAW_ASSEMBLY_FASTA = compute_raw_assembly_fasta()
+RAW_ASSEMBLY_GFA = compute_raw_assembly_gfa()
 
 # ------------------------------------------------------------------------
 # collect the inputs
@@ -67,6 +83,19 @@ if get_config('short_R2') != None:
         input: get_input_files('short_R2')
         output: DATA+"/inputs/raw_short_R2.fastq.gz"
         shell: "cat {input} > {output}"
+
+if config['method'] == 'external':
+    rule make_raw_input_assembly_fasta:
+        input: get_input_files('input_fasta')
+        output: DATA+"/inputs/assembly.fasta"
+        shell: "cat {input} > {output}"
+
+if config['method'] == 'external' and 'input_gfa' in config:
+    rule make_raw_input_assembly_gfa:
+        input: get_input_files('input_gfa')
+        output: DATA+"/inputs/assembly.gfa"
+        shell: "cat {input} > {output}"
+
 
 # ------------------------------------------------------------------------
 # estimate the genome size
@@ -469,7 +498,14 @@ rule pypolca_version:
 # Create pipeline output assembly
 # ------------------------------------------------------------------------
 
-if (get_config('short_R1') != None) and (get_config('short_R2') != None):
+if config['method'] == 'external':
+    
+    rule create_intermediate_fasta:
+        input: DATA+"/inputs/assembly.fasta"
+        output: DATA+"/intermediate.fasta"
+        shell: "cp -a {input} {output}"
+
+elif (get_config('short_R1') != None) and (get_config('short_R2') != None):
 
     rule create_intermediate_fasta:
         input: DATA+"/pypolca/pypolca_corrected.fasta"
@@ -483,10 +519,19 @@ else:
         output: DATA+"/intermediate.fasta"
         shell: "cp -a {input} {output}"
 
-rule create_intermediate_gfa:
-    input: {RAW_ASSEMBLY_GFA}
-    output: DATA+"/intermediate.gfa"
-    shell: "cp -a {input} {output}"
+if config['method'] != 'external':
+    
+    rule create_intermediate_gfa:
+        input: {RAW_ASSEMBLY_GFA}
+        output: DATA+"/intermediate.gfa"
+        shell: "cp -a {input} {output}"
+
+elif 'input_gfa' in config:
+
+    rule create_intermediate_gfa:
+        input: DATA+"/inputs/assembly.gfa"
+        output: DATA+"/intermediate.gfa"
+        shell: "cp -a {input} {output}"
 
 # ------------------------------------------------------------------------
 # Run ReferenceSeeker
@@ -580,7 +625,7 @@ rule make_summary:
     input:
         unpolished=RAW_ASSEMBLY_FASTA,
         intermediate_fasta=DATA+"/intermediate.fasta",
-        intermediate_gfa=DATA+"/intermediate.gfa",
+        intermediate_gfa=DATA+"/intermediate.gfa" if config['method'] != 'external' or 'input_gfa' in config else [],
         referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else []),
         autocycler_txt=DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
         fastp_txt=DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
