@@ -657,11 +657,11 @@ rule make_summary:
         	cat {DATA}/flye/assembly_info.txt
 		;;
             external)
-        	if [ -e {DATA}/intermediate.gfa ] ;
+        	if [ "{input.intermediate_gfa}" ] ; then
         	    echo 1>&2 implementme: topology from gfa
         	    exit 1
         	else
-        	    cat {DATA}/intermediate.gfa | {PIPELINE}/scripts/fasta-length
+        	    cat {input.intermediate_fasta} | {PIPELINE}/scripts/fasta-length
         	fi
         	;;
             *)
