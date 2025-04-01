@@ -37,7 +37,7 @@ def compute_raw_assembly_gfa():
     if config['method'] == 'autocycler':
         return DATA+"/autocycler/consensus_assembly.gfa"
     elif config['method'] == 'flye':
-        return DATA+"/flye/assembly.gfa"
+        return DATA+"/flye/assembly_graph.gfa"
     else:
         []
 
