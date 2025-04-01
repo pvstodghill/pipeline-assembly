@@ -656,6 +656,14 @@ rule make_summary:
             flye)
         	cat {DATA}/flye/assembly_info.txt
 		;;
+            external)
+        	if [ -e {DATA}/intermediate.gfa ] ;
+        	    echo 1>&2 implementme: topology from gfa
+        	    exit 1
+        	else
+        	    cat {DATA}/intermediate.gfa | {PIPELINE}/scripts/fasta-length
+        	fi
+        	;;
             *)
         	echo 1>&2 cannot happen: {params.method}
         	exit 1
