@@ -661,7 +661,7 @@ rule make_summary:
         	    echo 1>&2 implementme: topology from gfa
         	    exit 1
         	else
-        	    cat {input.intermediate_fasta} | {PIPELINE}/scripts/fasta-length
+        	    cat {input.intermediate_fasta} | {PIPELINE}/scripts/fasta-length -f
         	fi
         	;;
             *)
