@@ -197,7 +197,8 @@ rule make_subsamples:
         gs=DATA+"/genome_size.txt"
     output: SUBSAMPLES_FQ
     params:
-        subsamples = NUM_SUBSAMPLES
+        subsamples = NUM_SUBSAMPLES,
+        min_read_depth = get_config('min_read_depth',25)
     conda: "envs/autocycler.yaml"
     shell:
         """
@@ -205,7 +206,8 @@ rule make_subsamples:
         		  --reads {input.long_fq} \
 			  --out_dir $(dirname {output[0]}) \
         		  --genome_size $(cat {input.gs}) \
-        		  --count "{params.subsamples}"
+        		  --count {params.subsamples} \
+        		  --min_read_depth {params.min_read_depth}
         """
 
 # === Run assembler {name} on subsample {i} ===
@@ -340,7 +342,9 @@ rule run_flye:
     input:
         long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
         gs=DATA+"/genome_size.txt"
-    output: DATA+"/flye/assembly.fasta"
+    output:
+        fasta=DATA+"/flye/assembly.fasta",
+        gs=DATA+"/flye/assembly_graph.gfa"
     params:
         args = get_config('flye_args','')
     threads: 9999
@@ -350,7 +354,7 @@ rule run_flye:
         flye \
             --nano-hq {input.long_fq} \
             --genome-size $(cat {input.gs}) \
-            --out-dir $(dirname {output}) \
+            --out-dir $(dirname {output.fasta}) \
             --threads {threads} \
             {params.args}
         """

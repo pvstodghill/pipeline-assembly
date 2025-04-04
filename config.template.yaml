@@ -36,6 +36,9 @@ nanopore: .../long.fq.gz
 # set, defaults to "4".
 ## subsamples: 4
 
+# Minimum allowed read depth for subsamples
+## min_read_depth: 25
+
 ########################################################################
 # Flye parameters
 ########################################################################
