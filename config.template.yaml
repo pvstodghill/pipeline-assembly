@@ -29,7 +29,13 @@ nanopore: .../long.fq.gz
 ## input_gfa: .../plasmidsaurus.gfa         # optional
 
 ########################################################################
-# Autocycler parameters
+# Flye parameters
+########################################################################
+
+#flye_args: --asm-coverage 40
+
+########################################################################
+# Autocycler, Trycycler (common) parameters
 ########################################################################
 
 # Number of subsamples to generate of the entire long read set. If not
@@ -40,10 +46,23 @@ nanopore: .../long.fq.gz
 ## min_read_depth: 25
 
 ########################################################################
-# Flye parameters
+# Trycycler
 ########################################################################
 
-#flye_args: --asm-coverage 40
+#cluster_args: --distance 0.01 # default
+#cluster_args: --distance 0.02 # more permissive
+#cluster_args: --distance 0.005 # more strict
+
+# reconciliation parameters
+
+#remove_contigs: H_utg000003l M_Utg998
+#remove_clusters: fixme
+#remove_assemblies: fixme
+
+#reconcile_args: --max_add_seq 2000
+#reconcile_args_004: --min_identity 97.0 # special case cluster_004
+
+##MAKE_DOTPLOTS=true # make dotplots for clusters that fail to reconcile
 
 ########################################################################
 # Referenceseeker: path and params

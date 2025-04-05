@@ -12,37 +12,33 @@ GZIP="pigz"
 def get_config(name, default=None):
     return config[name] if name in config else default
 
-NUM_SUBSAMPLES=get_config("subsamples", "4")
-
-
-SUBSAMPLES_IS=list(map((lambda j: "%02d" % (j)),range(1,int(NUM_SUBSAMPLES)+1)))
-
-SUBSAMPLES_FQ = \
-    expand(DATA+"/subsamples/sample_{i}.fastq",i=SUBSAMPLES_IS)
+NUM_SUBSAMPLES=int(get_config("subsamples", "4"))
 
 ASSEMBLERS=['flye','miniasm','raven']
-ASSEMBLIES_FA = \
-    expand(DATA+"/assemblies/{name}_{i}.fasta",
-           name=ASSEMBLERS, i=SUBSAMPLES_IS)
 
 def compute_raw_assembly_fasta():
     if config['method'] == 'autocycler':
         return DATA+"/autocycler/consensus_assembly.fasta"
+    elif config['method'] == 'trycycler':
+        return DATA+"/trycycler/consensus.fasta"
     elif config['method'] == 'flye':
         return DATA+"/flye/assembly.fasta"
     else:
         return []
+
+RAW_ASSEMBLY_FASTA = compute_raw_assembly_fasta()
 
 def compute_raw_assembly_gfa():
     if config['method'] == 'autocycler':
         return DATA+"/autocycler/consensus_assembly.gfa"
     elif config['method'] == 'flye':
         return DATA+"/flye/assembly_graph.gfa"
+    elif 'input_gfa' in config:
+        return DATA+"/inputs/assembly.gfa"
     else:
-        []
+        return []
 
-RAW_ASSEMBLY_FASTA = compute_raw_assembly_fasta()
-RAW_ASSEMBLY_GFA = compute_raw_assembly_gfa()
+#RAW_ASSEMBLY_GFA = compute_raw_assembly_gfa()
 
 # ------------------------------------------------------------------------
 # collect the inputs
@@ -155,10 +151,33 @@ rule filtlong_version:
         """
 
 # ------------------------------------------------------------------------
-# autocycler method
+# method = flye
 # ------------------------------------------------------------------------
 
-# === download autocycler and auxiliary scripts ===
+rule run_flye:
+    input:
+        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        gs=DATA+"/genome_size.txt"
+    output:
+        fasta=DATA+"/flye/assembly.fasta",
+        gs=DATA+"/flye/assembly_graph.gfa"
+    params:
+        args = get_config('flye_args','')
+    threads: 9999
+    conda: "envs/flye.yaml"
+    shell:
+        """
+        flye \
+            --nano-hq {input.long_fq} \
+            --genome-size $(cat {input.gs}) \
+            --out-dir $(dirname {output.fasta}) \
+            --threads {threads} \
+            {params.args}
+        """
+
+# ------------------------------------------------------------------------
+# assembly scripts
+# ------------------------------------------------------------------------
 
 FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/flye.sh'
 MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
@@ -189,28 +208,57 @@ rule download_raven_script:
         chmod +x {output}
         """
 
-# === autocycler subsample ===
+# ------------------------------------------------------------------------
+# subsample the long reads
+# ------------------------------------------------------------------------
 
-rule make_subsamples:
-    input:
-        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
-        gs=DATA+"/genome_size.txt"
-    output: SUBSAMPLES_FQ
-    params:
-        subsamples = NUM_SUBSAMPLES,
-        min_read_depth = get_config('min_read_depth',25)
-    conda: "envs/autocycler.yaml"
-    shell:
-        """
-        autocycler subsample \
-        		  --reads {input.long_fq} \
-			  --out_dir $(dirname {output[0]}) \
-        		  --genome_size $(cat {input.gs}) \
-        		  --count {params.subsamples} \
-        		  --min_read_depth {params.min_read_depth}
-        """
+if config['method'] == 'autocycler':
 
-# === Run assembler {name} on subsample {i} ===
+    rule make_subsamples:
+        input:
+            long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+            gs=DATA+"/genome_size.txt"
+        output: expand(DATA+"/subsamples/sample_{i}.fastq",i=list(map((lambda j: "%02d" % (j)),range(1,NUM_SUBSAMPLES+1))))
+        params:
+            subsamples = NUM_SUBSAMPLES,
+            min_read_depth = get_config('min_read_depth',25)
+        conda: "envs/autocycler.yaml"
+        shell:
+            """
+            autocycler subsample \
+                              --reads {input.long_fq} \
+                              --out_dir $(dirname {output[0]}) \
+                              --genome_size $(cat {input.gs}) \
+                              --count {params.subsamples} \
+	       		      --min_read_depth {params.min_read_depth}
+            """
+
+elif config['method'] == 'trycycler':
+
+    rule make_subsamples:
+        input:
+            long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+            gs=DATA+"/genome_size.txt"
+        output: expand(DATA+"/subsamples/sample_{i}.fastq",i=list(map((lambda j: "%02d" % (j)),range(1,NUM_SUBSAMPLES*len(ASSEMBLERS)+1))))
+        params:
+            subsamples = NUM_SUBSAMPLES*len(ASSEMBLERS),
+            min_read_depth = get_config('min_read_depth',25)
+        threads: 9999
+        conda: "envs/trycycler.yaml"
+        shell:
+            """
+            trycycler subsample \
+                      --reads {input.long_fq} \
+            	      --out_dir $(dirname {output[0]}) \
+                      --genome_size $(cat {input.gs}) \
+                      --count {params.subsamples}  \
+	       	      --min_read_depth {params.min_read_depth} \
+                      --threads {threads}
+            """
+
+# ------------------------------------------------------------------------
+# Run assembler {name} on subsample {i}
+# ------------------------------------------------------------------------
 
 rule make_one_assembly:
     input:
@@ -228,11 +276,19 @@ rule make_one_assembly:
             {threads} $(cat {input.gs})
         """
 
+# ------------------------------------------------------------------------
+# method = autocycler
+# ------------------------------------------------------------------------
+
 # === autocycler compress ===
+
+AUTO_ASSEMBLIES_FA = \
+    expand(DATA+"/assemblies/{name}_{i}.fasta",
+           name=ASSEMBLERS, i=list(map((lambda j: "%02d" % (j)),range(1,NUM_SUBSAMPLES+1))))
 
 rule run_autocycler_compress:
     input: 
-        assemblies=ASSEMBLIES_FA
+        assemblies=AUTO_ASSEMBLIES_FA
     output: DATA+"/autocycler/input_assemblies.gfa"
     conda: "envs/autocycler.yaml"
     shell:
@@ -255,7 +311,7 @@ checkpoint run_autocycler_cluster:
             --autocycler_dir $(dirname {input.compresses_assemblies})
         """
 
-def list_of_clusters(wildcards):
+def list_of_autocycler_clusters(wildcards):
     ckp = checkpoints.run_autocycler_cluster.get(**wildcards).output[0]
     clusters = glob.glob(DATA+"/autocycler/clustering/qc_pass/cluster_*")
     return list(clusters)
@@ -289,7 +345,7 @@ rule run_autocycler_resolve:
 #rule run_autocycler_combine:
 rule run_autocycler:
     input:
-        gfas=expand("{cluster}/5_final.gfa",cluster=list_of_clusters)
+        gfas=expand("{cluster}/5_final.gfa",cluster=list_of_autocycler_clusters)
     output:
         fasta=DATA+"/autocycler/consensus_assembly.fasta",
         gfa=DATA+"/autocycler/consensus_assembly.gfa"
@@ -335,28 +391,203 @@ rule raven_version:
         """
 
 # ------------------------------------------------------------------------
-# flye method
+# method = trycycler
 # ------------------------------------------------------------------------
 
-rule run_flye:
+TRY_ASSEMBLIES_FA= \
+        expand(DATA+"/assemblies/flye_{j}.fasta", j=list(map((lambda j: "%02d" % (j)),range(1,1*NUM_SUBSAMPLES+1)))) \
+        + expand(DATA+"/assemblies/miniasm_{j}.fasta", j=list(map((lambda j: "%02d" % (j)),range(1*NUM_SUBSAMPLES+1,2*NUM_SUBSAMPLES+1)))) \
+        + expand(DATA+"/assemblies/raven_{j}.fasta", j=list(map((lambda j: "%02d" % (j)),range(2*NUM_SUBSAMPLES+1,3*NUM_SUBSAMPLES+1))))
+
+# === cluster the contigs from the different assembles ===
+rule run_trycycler_cluster:
     input:
-        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
-        gs=DATA+"/genome_size.txt"
-    output:
-        fasta=DATA+"/flye/assembly.fasta",
-        gs=DATA+"/flye/assembly_graph.gfa"
-    params:
-        args = get_config('flye_args','')
+        assemblies=TRY_ASSEMBLIES_FA,
+        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+    output: directory(DATA+"/trycycler/raw_clusters")
+    params: config['cluster_args'] if 'cluster_args' in config else ''
     threads: 9999
-    conda: "envs/flye.yaml"
+    conda: "envs/trycycler.yaml"
     shell:
         """
-        flye \
-            --nano-hq {input.long_fq} \
-            --genome-size $(cat {input.gs}) \
-            --out-dir $(dirname {output.fasta}) \
+        trycycler cluster \
+            {params} \
             --threads {threads} \
-            {params.args}
+            --assemblies {input.assemblies} \
+            --reads {input.long_reads} \
+            --out_dir {output}
+        """
+        
+    
+# === copy clusters; eliminate clusters, contigs, etc., as needed ===
+
+# Cribbed from <https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution>
+
+checkpoint make_trycycler_clusters:
+    input:
+        clusters=DATA+"/trycycler/raw_clusters"
+    output: DATA+"/trycycler/clusters/.done.txt"
+    params:
+        clusters_to_remove = get_config('remove_clusters',''),
+        contigs_to_remove = get_config('remove_contigs',''),
+        assemblies_to_remove = get_config('remove_assemblies',''),
+    shell:
+        """
+        dir=$(dirname {output})
+        rm -rf $dir
+        cp --archive {input.clusters} $dir
+
+        # remove clusters
+        for index in {params.clusters_to_remove} ; do
+            if [ -e $dir/${{index}} ] ; then
+                path=$dir/${{index}}
+            elif [ -e $dir/cluster_00${{index}} ] ; then
+                path=$dir/cluster_00${{index}}
+            elif [ -e $dir/cluster_0${{index}} ] ; then
+                path=$dir/cluster_0${{index}}
+            elif [ -e $dir/cluster_${{index}} ] ; then
+                path=$dir/cluster_${{index}}
+            fi
+            if [ "$path" ] ; then
+                echo "## removing cluster $index"
+                (
+                    set -x
+                    rm -rf $path
+                )
+            fi
+        done
+
+        # remove contigs
+        (
+            shopt -s nullglob
+            for name in {params.contigs_to_remove} ; do
+                echo "## removing contig $name"
+                paths="$(echo $dir/cluster_*/1_contigs/$name.fasta)"
+                for path in $paths ; do
+                    (
+                        set -x
+                        rm -f $path
+                    )
+                    cluster_xxx=$(dirname $(dirname $path))
+                    rm -f ${{cluster_xxx}}/2_all_seqs.fasta
+                done
+            done
+        )
+
+        # remove assemblies
+        (
+            shopt -s nullglob
+            for letter in {params.assemblies_to_remove} ; do
+                echo "## removing assembly $letter"
+                paths="$(echo $dir/cluster_*/1_contigs/${{letter}}_*.fasta)"
+                for path in $paths ; do
+                    (
+                        set -x
+                        rm -f $path
+                    )
+                    cluster_xxx=$(dirname $(dirname $path))
+                    rm -f ${{cluster_xxx}}/2_all_seqs.fasta
+                done
+            done
+        )
+
+        touch {output}
+        """
+
+def list_of_trycycler_clusters(wildcards):
+    ckp = checkpoints.make_trycycler_clusters.get(**wildcards).output[0]
+    clusters = glob.glob(DATA+"/trycycler/clusters/cluster_*")
+    return list(clusters)
+    #return expand(ckp_reconciled_dir+"/cluster_{i}",i=clusters)
+
+# === reconcile the contigs in each cluster ===
+
+rule run_trycycler_reconcile:
+    input:
+        contigs=DATA+"/trycycler/clusters/{cluster}/1_contigs",
+        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+    output: DATA+"/trycycler/clusters/{cluster}/2_all_seqs.fasta"
+    params:
+        args_global=get_config('reconcile_args',''),
+        args_cluster=get_config('reconcile_args_{cluster}','')
+    threads: 9999
+    conda: "envs/trycycler.yaml"
+    shell:
+        """
+        trycycler reconcile \
+                --threads {threads} \
+                --reads {input.long_reads} \
+                --cluster_dir $(dirname {input.contigs}) \
+                {params.args_global} {params.args_cluster}
+        """
+
+# === multiple sequence alignment (MSA) ===
+
+rule run_trycycler_msa:
+    input: DATA+"/trycycler/clusters/{cluster}/2_all_seqs.fasta"
+    output: DATA+"/trycycler/clusters/{cluster}/3_msa.fasta"
+    threads: 9999
+    conda: "envs/trycycler.yaml"
+    shell:
+        """
+        trycycler msa \
+                --threads {threads} \
+                --cluster_dir $(dirname {input})
+        """
+
+# === Partition long reads across clusters ===
+
+rule run_trycycler_partition:
+    input:
+        contigs=expand("{cluster}/3_msa.fasta",cluster=list_of_trycycler_clusters),
+        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+    output: DATA+"/trycycler/clusters/.done2.txt"
+    threads: 9999
+    conda: "envs/trycycler.yaml"
+    shell:
+        """
+        trycycler partition \
+                 --threads {threads} \
+                 --reads {input.long_reads} \
+                 --cluster_dirs $(for c in {input.contigs} ; do dirname $c ; done)
+        touch {output}
+        """
+
+# === Generate a consensus sequence for each cluster ===
+
+rule run_trycycler_consensus:
+    input:
+        DATA+"/trycycler/clusters/.done2.txt",
+        #DATA+"/trycycler/clusters/{cluster}/4_reads.fastq"
+    output:
+        gfa=DATA+"/trycycler/clusters/{cluster}/5_chunked_sequence.gfa",
+        tmp_fna=DATA+"/trycycler/clusters/{cluster}/6_initial_consensus.fasta",
+        fna=DATA+"/trycycler/clusters/{cluster}/7_final_consensus.fasta",
+    threads: 9999
+    conda: "envs/trycycler.yaml"
+    shell:
+        """
+        trycycler consensus \
+                 --threads {threads} \
+                 --cluster_dir $(dirname {output.fna})
+        """
+
+# === Generate the aggregate consensus assembly ===
+
+rule make_trycycler_consensus_fasta:
+    input: expand("{cluster}/7_final_consensus.fasta",cluster=list_of_trycycler_clusters)
+    output: DATA+"/trycycler/consensus.fasta"
+    shell: "cat {input} > {output}"
+
+
+# === generate version info ===
+
+rule trycycler_version:
+    output: DATA+"/versions/trycycler.txt"
+    conda: "envs/trycycler.yaml"
+    shell:
+        """
+        trycycler --version 2>&1 | tee {output}
         """
 
 # ------------------------------------------------------------------------
@@ -523,17 +754,11 @@ else:
         output: DATA+"/intermediate.fasta"
         shell: "cp -a {input} {output}"
 
-if config['method'] != 'external':
-    
-    rule create_intermediate_gfa:
-        input: {RAW_ASSEMBLY_GFA}
-        output: DATA+"/intermediate.gfa"
-        shell: "cp -a {input} {output}"
 
-elif 'input_gfa' in config:
+if compute_raw_assembly_gfa() != []:
 
     rule create_intermediate_gfa:
-        input: DATA+"/inputs/assembly.gfa"
+        input: compute_raw_assembly_gfa()
         output: DATA+"/intermediate.gfa"
         shell: "cp -a {input} {output}"
 
@@ -627,9 +852,9 @@ rule dnadiff_version:
 
 rule make_summary:
     input:
-        unpolished=RAW_ASSEMBLY_FASTA,
+        #unpolished=RAW_ASSEMBLY_FASTA,
         intermediate_fasta=DATA+"/intermediate.fasta",
-        intermediate_gfa=DATA+"/intermediate.gfa" if config['method'] != 'external' or 'input_gfa' in config else [],
+        intermediate_gfa=DATA+"/intermediate.gfa" if compute_raw_assembly_gfa() != [] else [],
         referenceseeker_log=(DATA+"/referenceseeker.log" if 'refseek_dir' in config else []),
         autocycler_txt=DATA+"/versions/autocycler.txt" if config['method'] == 'autocycler' else [],
         fastp_txt=DATA+"/versions/fastp.txt" if 'short_R1' in config else [],
@@ -667,6 +892,9 @@ rule make_summary:
         	else
         	    cat {input.intermediate_fasta} | {PIPELINE}/scripts/fasta-length -f
         	fi
+        	;;
+            trycycler)
+        	cat {input.intermediate_fasta} | {PIPELINE}/scripts/fasta-length -f
         	;;
             *)
         	echo 1>&2 cannot happen: {params.method}
