@@ -1,5 +1,5 @@
 #method: autocycler
 method: flye
-nanopore: example/reads.fastq.gz
+long: example/reads.fastq.gz
 #refseek_dir: ~/scratch/referenceseeker
 

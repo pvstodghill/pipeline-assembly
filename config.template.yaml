@@ -14,7 +14,7 @@ method: autocycler
 ########################################################################
 
 # raw, unpolished long reads
-nanopore: .../long.fq.gz
+long: .../long.fq.gz
 
 # raw, unpolished Illumina reads
 ## short_R1: .../short_R1.fastq.gz

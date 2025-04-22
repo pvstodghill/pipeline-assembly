@@ -63,9 +63,9 @@ def get_input_files(name):
         raise FileNotFoundError('input files for \''+name+'\' not found.')
     return l
 
-rule make_raw_nanopore:
-    input: get_input_files('nanopore')
-    output: DATA+"/inputs/raw_nanopore.fastq.gz"
+rule make_raw_long:
+    input: get_input_files('long')
+    output: DATA+"/inputs/raw_long.fastq.gz"
     shell: "cat {input} > {output}"
 
 if get_config('short_R1') != None:
@@ -110,7 +110,7 @@ if get_config('genome_size') != None:
 else:
     
     rule compute_genome_size:
-        input: DATA+"/inputs/raw_nanopore.fastq.gz"
+        input: DATA+"/inputs/raw_long.fastq.gz"
         output: DATA+"/genome_size.txt"
         conda: "envs/lrge.yaml"
         threads: 9999
@@ -132,8 +132,8 @@ rule lrge_version:
 
 
 rule run_filtlong:
-    input: DATA+"/inputs/raw_nanopore.fastq.gz",
-    output: DATA+"/filtlong/filtered_nanopore.fastq.gz",
+    input: DATA+"/inputs/raw_long.fastq.gz",
+    output: DATA+"/filtlong/filtered_long.fastq.gz",
     threads: 9999
     conda: "envs/filtlong.yaml"
     shell:
@@ -156,7 +156,7 @@ rule filtlong_version:
 
 rule run_flye:
     input:
-        long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        long_fq=DATA+"/filtlong/filtered_long.fastq.gz",
         gs=DATA+"/genome_size.txt"
     output:
         fasta=DATA+"/flye/assembly.fasta",
@@ -216,7 +216,7 @@ if config['method'] == 'autocycler':
 
     rule make_subsamples:
         input:
-            long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+            long_fq=DATA+"/filtlong/filtered_long.fastq.gz",
             gs=DATA+"/genome_size.txt"
         output: expand(DATA+"/subsamples/sample_{i}.fastq",i=list(map((lambda j: "%02d" % (j)),range(1,NUM_SUBSAMPLES+1))))
         params:
@@ -237,7 +237,7 @@ elif config['method'] == 'trycycler':
 
     rule make_subsamples:
         input:
-            long_fq=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+            long_fq=DATA+"/filtlong/filtered_long.fastq.gz",
             gs=DATA+"/genome_size.txt"
         output: expand(DATA+"/subsamples/sample_{i}.fastq",i=list(map((lambda j: "%02d" % (j)),range(1,NUM_SUBSAMPLES*len(ASSEMBLERS)+1))))
         params:
@@ -403,7 +403,7 @@ TRY_ASSEMBLIES_FA= \
 rule run_trycycler_cluster:
     input:
         assemblies=TRY_ASSEMBLIES_FA,
-        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+        long_reads=DATA+"/filtlong/filtered_long.fastq.gz"
     output: directory(DATA+"/trycycler/raw_clusters")
     params: config['cluster_args'] if 'cluster_args' in config else ''
     threads: 9999
@@ -505,7 +505,7 @@ def list_of_trycycler_clusters(wildcards):
 rule run_trycycler_reconcile:
     input:
         contigs=DATA+"/trycycler/clusters/{cluster}/1_contigs",
-        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+        long_reads=DATA+"/filtlong/filtered_long.fastq.gz"
     output: DATA+"/trycycler/clusters/{cluster}/2_all_seqs.fasta"
     params:
         args_global=get_config('reconcile_args',''),
@@ -540,7 +540,7 @@ rule run_trycycler_msa:
 rule run_trycycler_partition:
     input:
         contigs=expand("{cluster}/3_msa.fasta",cluster=list_of_trycycler_clusters),
-        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz"
+        long_reads=DATA+"/filtlong/filtered_long.fastq.gz"
     output: DATA+"/trycycler/clusters/.done2.txt"
     threads: 9999
     conda: "envs/trycycler.yaml"
@@ -596,7 +596,7 @@ rule trycycler_version:
 
 rule run_medaka:
     input:
-        reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        reads=DATA+"/filtlong/filtered_long.fastq.gz",
         unpolished=RAW_ASSEMBLY_FASTA
     output: DATA+"/medaka/consensus.fasta"
     params:
@@ -798,7 +798,7 @@ rule run_unicycler:
     input:
         short_r1=DATA+"/fastp/trimmed_R1.fastq.gz",
         short_r2=DATA+"/fastp/trimmed_R2.fastq.gz",
-        long_reads=DATA+"/filtlong/filtered_nanopore.fastq.gz",
+        long_reads=DATA+"/filtlong/filtered_long.fastq.gz",
     output: DATA+"/unicycler/assembly.fasta"
     threads: 9999
     conda: "envs/unicycler.yaml"
