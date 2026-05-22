@@ -179,9 +179,11 @@ rule run_flye:
 # assembly scripts
 # ------------------------------------------------------------------------
 
-FLYE_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/flye.sh'
-MINIASM_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/miniasm.sh'
-RAVEN_SH_URL='https://raw.githubusercontent.com/rrwick/Autocycler/refs/heads/main/scripts/raven.sh'
+ASSEMBLY_SCRIPTS_URL='https://raw.githubusercontent.com/rrwick/Autocycler/4815552adfc5540136dc313560d6f1e6d24a506f/scripts'
+
+FLYE_SH_URL=ASSEMBLY_SCRIPTS_URL+'/flye.sh'
+MINIASM_SH_URL=ASSEMBLY_SCRIPTS_URL+'/miniasm.sh'
+RAVEN_SH_URL=ASSEMBLY_SCRIPTS_URL+'/raven.sh'
 
 
 rule download_flye_script:
