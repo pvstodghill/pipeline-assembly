@@ -693,6 +693,7 @@ if (get_config('short_R1') != None) and (get_config('short_R2') != None):
                 CAREFUL=
             fi
             polypolish polish $CAREFUL draft.fasta filtered1.sam filtered2.sam > polished.fasta
+            pigz *.sam
             """
 
 rule polypolish_version:
